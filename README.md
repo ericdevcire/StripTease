@@ -79,7 +79,7 @@ Right-click anywhere in a panel. Clicking on an element opens that element's men
 *   **Add knob**
 *   **Add toggle**
 *   **Add radio**
-*   **Add GR meter**
+*   **Add GR meter** — lands centred on the panel, whatever else it contains.
 *   **Add GR bar... > Horizontal / Vertical**
 *   **Add separator**
 *   **Add title**
@@ -137,7 +137,7 @@ Right-click anywhere in a panel. Clicking on an element opens that element's men
 
     Neither level mode needs anything installed on the track. The caption under the needle reads `COMPRESSION`, `INPUT` or `OUTPUT` accordingly, and the small **`GR` / `IN` / `OUT`** word at the bottom right of the meter, next to the trim screw, is clickable — it cycles through the three without opening the menu.
 *   **Reference  (0 dBFS)...** — *Level modes only.* Which level the `0` of the dial stands for: **0 dBFS** (full scale, default), **−9**, **−12**, **−14**, **−18** or **−20 dBFS**. Pick −18 and a signal peaking at −18 dBFS parks the needle on 0, with the red zone starting there — the usual way to work with headroom on a channel strip. The numeric readout follows the same reference.
-*   **Source  (Compressor n)...** — Which plugin on the track the meter reads: **Compressor 1 to 4** or **Gate 1 to 2**. Only shown in *Gain reduction* mode — the level modes have a single measurement point and ignore it. When the script knows the track, sources with no matching plugin are flagged `-- none`. Gates are identified by keywords in the plugin name (*gate*, *expander*, *Pro-G*); a gate detected as a compressor is simply read as the corresponding Compressor number.
+*   **Source  (Compressor n)...** — Which plugin on the track the meter reads: **Compressor 1**, **Compressor 2** or **Gate 1**, counted in FX-chain order. Only shown in *Gain reduction* mode — the level modes have a single measurement point and ignore it. When the script knows the track, sources with no matching plugin are flagged `-- none`. Gates are identified by keywords in the plugin name (*gate*, *expander*, *Pro-G*); a gate detected as a compressor is simply read as the corresponding Compressor number.
 *   **Linear** / **Exponential** — Scale of the dial. In gain reduction mode: `0 4 8 12 16 20` or `0 2 4 6 10 20`. In level mode the dial reads dBFS over a 40 dB window: `-40 -32 -24 -16 -8 0` or `-40 -20 -10 -5 -2 0`. In both cases the needle rests on the left and swings right as the reading grows.
 *   **Color...** — Palette + eleven presets.
 *   **Size  (n px)...** — Tiny 90 px, Small 105 px, Medium 120 px, Large 150 px, Very large 180 px, Huge 210 px.
@@ -230,7 +230,7 @@ Direct Link applies to knobs, toggles and radios. Meters are fed by the GR syste
 
 A needle meter can show three things, chosen with *Measure...* in its right-click menu: the **gain reduction** of a source, the **input level**, or the **output level**. GR bars always show gain reduction.
 
-For gain reduction, the meter reads a single value per source: **Compressor 1 to 4** or **Gate 1 to 2**, counted in FX-chain order on the same track as the panel.
+For gain reduction, the meter reads a single value per source: **Compressor 1**, **Compressor 2** or **Gate 1**, counted in FX-chain order on the same track as the panel.
 
 ### Gain reduction
 
@@ -241,7 +241,7 @@ For gain reduction, the meter reads a single value per source: **Compressor 1 to
 2. **With the *StripBus GR* JSFX** — For compressors that report nothing, StripBus measures the reduction itself by comparing the signal before and after the plugin:
    *   Insert one instance of **StripBus GR** *above* the compressor, set **Measurement point** to `In - above the compressor`.
    *   Insert a second instance *below* the compressor, set **Measurement point** to `Out - below the compressor`.
-   *   Set **Compressor (number on this track)** to the same number on both, and point your GR meter at that same *Compressor n*.
+   *   Set **Compressor (number on this track)** to the same number on both, and point your GR meter at that same *Compressor n*. The slider still goes up to 4, but the meter only offers 1 and 2 — stay on those.
    *   **Makeup** — `Auto` tracks the plugin's makeup gain by itself (recommended); `Manual` lets you enter the exact **Manual makeup (dB)** you dialed in the compressor, from 0 to 24 dB.
 
 ### Levels

@@ -342,7 +342,8 @@ local(r)
     r = max(4, sb_EL[i * 8 + 5]);
     sb_type(i) == 5 ? ( r * (sb_radio_vert(i) ? 1 : sb_radio_n(i)) ) :
 
-    sb_type(i) == 6 || sb_type(i) == 7 ? 12 :
+    sb_type(i) == 6 ? ( r * 7.5 ) :
+    sb_type(i) == 7 ? ( sb_bar_vert(i) ? 12 : r * 6 ) :
     sb_type(i) == 2 ? 2 * r :
                       2 * (r + sb_ring_ref());
   );
@@ -714,7 +715,8 @@ local(i, c)
     type == 6 ? (
 
       c[1] = 1; c[2] = 0; c[5] = 20; c[6] = 0; c[7] = 4;
-      c[3] = max(0, 2 * (sb_cols - 1));
+
+      c[3] = max(0, 4 * (sb_cols - 1));
       strcpy(sb_name(i), "");
     ) :
     type == 7 ? (
@@ -1643,22 +1645,25 @@ local(i)
   );
 );
 
+function sb_gr_src_of(j) ( j == 0 ? 1 : j == 1 ? 2 : 5 );
+
 function sb_build_link_menu(cur)
-local(i, nc, ng, known, miss, nsrc)
+local(i, j, nc, ng, known, miss, nsrc)
 (
 
   known = sb_gr_nknown() > 0;
   nc = sb_gr_ncomp(); ng = sb_gr_ngate();
 
-  nsrc = 6;
+  nsrc = 3;
 
-  sb_gr_src_name(max(1, min(nsrc, cur)));
+  sb_gr_src_name(max(1, min(6, cur)));
   sprintf(#sb_tmp, ">Source  (%s)...", #sb_tmp2);
   sb_mi_sub(#sb_tmp);
-  i = 1;
+  j = 0;
 
   loop(nsrc,
-    strcpy(#sb_tmp, i == nsrc ? "<" : "");
+    i = sb_gr_src_of(j);
+    strcpy(#sb_tmp, j == nsrc - 1 ? "<" : "");
     strcat(#sb_tmp, i == cur ? "!" : "");
     sb_gr_src_name(i);
     strcat(#sb_tmp, #sb_tmp2);
@@ -1667,7 +1672,7 @@ local(i, nc, ng, known, miss, nsrc)
     miss = i >= 5 ? (i - 4 > ng) : (i > nc);
     ( known && miss ) ? strcat(#sb_tmp, "   -- none");
     sb_mi_add(8000 + i, #sb_tmp);
-    i += 1;
+    j += 1;
   );
 );
 
