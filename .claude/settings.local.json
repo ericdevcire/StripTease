@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(defaults read *)",
+      "Read(//Applications/REAPER.app/Contents/InstallFiles/Effects/midi/**)"
+    ]
+  }
+}
