@@ -266,7 +266,7 @@ local(f)
 
 function sb_valf(i) ( sb_pos(i) * 127 );
 
-function sb_knob_spd(fine) ( fine ? 0.0528 : 0.1584 );
+function sb_knob_spd(fine) ( fine ? 0.06336 : 0.19008 );
 
 function sb_radio_n(i)    ( 2 + floor((sb_EL[i * 8 + 7] & 112) / 16) );
 function sb_radio_vert(i) ( sb_flag(i, 8) );
