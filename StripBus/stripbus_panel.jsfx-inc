@@ -425,16 +425,37 @@ function sb_set_group(g)
   );
 );
 
+function sb_tick_min() ( 0.012 );
+function sb_tick_max() ( 0.060 );
+
 function sb_frame_time()
-local(t, s)
+local(t, s, dt, p)
 (
   t = time_precise();
+
+  dt = sb_frame_prev > 0 ? t - sb_frame_prev : 0;
+  sb_frame_prev = t;
+
   s = sb_sync_get(6);
-  ( s <= 0 || s > t || t - s > 0.25 ||
-    ( s == sb_frame_seen && t - s >= 0.004 ) ) ? (
+
+  ( s <= 0 || s > t || t - s > 0.25 ) ? (
+
     s = t;
     sb_sync_set(6, s);
+    sb_sync_set(7, sb_tick_min());
+  ) : (
+
+    p = sb_sync_get(7);
+    ( dt > 0 && dt < 0.25 ) ? ( p = max(dt, p * 0.95) );
+    p = max(sb_tick_min(), min(sb_tick_max(), p));
+    sb_sync_set(7, p);
+
+    ( s == sb_frame_seen && t - s >= p * 0.90 ) ? (
+      s = t;
+      sb_sync_set(6, s);
+    );
   );
+
   sb_frame_seen = s;
   sb_tnow = s;
 );
@@ -460,6 +481,8 @@ local(t, t1, td, tt, d, v, s)
 
   sb_scroll_raw = sb_scroll;
   sb_scroll = max(0, min(sb_maxscroll(), sb_scroll));
+
+  sb_scroll = floor(sb_scroll + 0.5);
 );
 
 function sb_scroll_target()
@@ -2174,6 +2197,7 @@ local(i)
   memset(sb_LOC, 0, 8);
 
   sb_frame_seen = 0;
+  sb_frame_prev = 0;
   sb_tnow = time_precise();
   sb_cfg_dirty = 1;
 
