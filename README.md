@@ -304,4 +304,4 @@ Two things stay outside of this: the per-module default preset (*Save preset as 
 
 **License** — StripBus is freeware. You may use and modify it for your personal workflow. Selling, commercially repackaging or redistributing it for profit — this version or any derivative — is prohibited.
 
-*Developer: Eric Avondo*
+
