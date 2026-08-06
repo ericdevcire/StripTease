@@ -1,6 +1,6 @@
 # STRIPBUS User Manual
 
-Welcome to the comprehensive guide for the StripBus module in REAPER. This document covers the core concepts, an exhaustive list of all right-click menu options, and the workflow for direct parameter linking and creating smart presets.
+Welcome to the comprehensive guide for the StripBus module in REAPER. This document covers the core concepts, an exhaustive list of all menu options, and the workflow for direct parameter linking and creating smart presets.
 
 
 
