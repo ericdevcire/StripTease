@@ -829,7 +829,7 @@ local(cx, cy, r, hh, on, ci)
 );
 
 function sb_draw_radio(i)
-local(cx, cy, n, k, sel, vert, w, h, x0, y0, sw, sh, sx, sy, g, ci)
+local(cx, cy, n, k, sel, vert, w, h, x0, y0, sw, sh, sx, sy, g, ci, sp)
 (
   cx = sb_cx(i); cy = sb_cy(i);
   n = sb_radio_n(i); sel = sb_radio_pos(i);
@@ -847,34 +847,39 @@ local(cx, cy, n, k, sel, vert, w, h, x0, y0, sw, sh, sx, sy, g, ci)
 
   k = 0;
   loop(n,
-    sx = vert ? x0 : x0 + k * sw;
-    sy = vert ? y0 + k * sh : y0;
+
+    sp = vert ? n - 1 - k : k;
+    sx = vert ? x0 : x0 + sp * sw;
+    sy = vert ? y0 + sp * sh : y0;
     k == sel ? sb_setcol(ci, 1) : sb_setcol(ci, 0.45);
 
     gfx_rect(sx, sy,
-             ( !vert && k < n - 1 ) ? sw - g : sw,
-             (  vert && k < n - 1 ) ? sh - g : sh);
+             ( !vert && sp < n - 1 ) ? sw - g : sw,
+             (  vert && sp < n - 1 ) ? sh - g : sh);
     k += 1;
   );
 
-  sx = vert ? x0 : x0 + sel * sw;
-  sy = vert ? y0 + sel * sh : y0;
+  sp = vert ? n - 1 - sel : sel;
+  sx = vert ? x0 : x0 + sp * sw;
+  sy = vert ? y0 + sp * sh : y0;
   sb_is_light(ci) ? ( gfx_r = 0.15; gfx_g = 0.15; gfx_b = 0.15; )
                   : ( gfx_r = 1;    gfx_g = 1;    gfx_b = 1;    );
   gfx_a = 0.55;
-  gfx_rect(sx, sy, ( !vert && sel < n - 1 ) ? sw - g : sw, max(1, sb_uisc));
+  gfx_rect(sx, sy, ( !vert && sp < n - 1 ) ? sw - g : sw, max(1, sb_uisc));
   gfx_a = 1;
 );
 
 function sb_radio_at(i, mx, my)
-local(n, l, t)
+local(n, l, t, p)
 (
   n = sb_radio_n(i);
 
   l = n * (sb_radio_vert(i) ? sb_radio_ch(i) : sb_radio_cw(i));
   t = sb_radio_vert(i) ? (my - sb_cy(i) + l * 0.5) / l
                        : (mx - sb_cx(i) + l * 0.5) / l;
-  max(0, min(n - 1, floor(t * n)));
+  p = max(0, min(n - 1, floor(t * n)));
+
+  sb_radio_vert(i) ? n - 1 - p : p;
 );
 
 function sb_draw_sep(i)
@@ -945,6 +950,17 @@ function sb_vu_screw_hit(i, mx, my)
 ( abs(mx - sb_cx(i))     <= sb_vu_sr(i) * 1.8 &&
   abs(my - sb_vu_scy(i)) <= sb_vu_sr(i) * 1.8 );
 
+function sb_vu_btn_w(i)  ( sb_vu_w(i) * 0.26 );
+function sb_vu_btn_h(i)  ( sb_vu_foot(i) * 0.80 );
+function sb_vu_btn_cx(i) ( sb_cx(i) + sb_vu_w(i) * 0.28 );
+
+function sb_vu_btn_on(i) ( sb_vu_foot(i) >= 9 * sb_uisc );
+
+function sb_vu_btn_hit(i, mx, my)
+( sb_vu_btn_on(i) &&
+  abs(mx - sb_vu_btn_cx(i)) <= sb_vu_btn_w(i) * 0.5 + 2 * sb_uisc &&
+  abs(my - sb_vu_scy(i))    <= sb_vu_btn_h(i) * 0.5 + 2 * sb_uisc );
+
 function sb_gr_link(i)  ( max(1, min(6, sb_EL[i * 8 + 1])) );
 
 function sb_gr_src_name(n)
@@ -955,38 +971,81 @@ function sb_gr_trim(i)  ( max(-6, min(6, sb_EL[i * 8 + 2])) );
 
 function sb_gr_prog(i)  ( sb_flag(i, 2) );
 
+function sb_vu_mode(i) ( min(2, floor((sb_EL[i * 8 + 7] & 112) / 16)) );
+
+function sb_vu_setmode(i, m)
+( sb_EL[i * 8 + 7] = sb_EL[i * 8 + 7] - (sb_EL[i * 8 + 7] & 112)
+                     + max(0, min(2, m)) * 16 );
+
+function sb_vu_mode_name(m)
+( m == 1 ? strcpy(#sb_tmp2, "Input level")  :
+  m == 2 ? strcpy(#sb_tmp2, "Output level")
+         : strcpy(#sb_tmp2, "Gain reduction") );
+
+function sb_vu_mode_tag(m)
+( m == 1 ? strcpy(#sb_tmp2, "IN")  :
+  m == 2 ? strcpy(#sb_tmp2, "OUT")
+         : strcpy(#sb_tmp2, "GR") );
+
+function sb_vu_refi(i) ( min(5, floor((sb_EL[i * 8 + 7] & 896) / 128)) );
+
+function sb_vu_setref(i, r)
+( sb_EL[i * 8 + 7] = sb_EL[i * 8 + 7] - (sb_EL[i * 8 + 7] & 896)
+                     + max(0, min(5, r)) * 128 );
+
+function sb_vu_refdb_of(r)
+( r == 1 ? 9 : r == 2 ? 12 : r == 3 ? 14 : r == 4 ? 18 : r == 5 ? 20 : 0 );
+
+function sb_vu_refdb(i) ( sb_vu_refdb_of(sb_vu_refi(i)) );
+
+function sb_vu_ref_name(r)
+( r ? sprintf(#sb_tmp2, "-%d dBFS", sb_vu_refdb_of(r))
+    : strcpy(#sb_tmp2, "0 dBFS   (full scale)") );
+
 function sb_gr_label(i, j)
 (
-  sb_gr_prog(i) ? (
-    j <= 0 ? 0 : j == 1 ? 2 : j == 2 ? 4 : j == 3 ? 6 : j == 4 ? 10 : 20
+  sb_vu_mode(i) ? (
+
+    sb_gr_prog(i) ?
+      ( j <= 0 ? -20 : j == 1 ? -10 : j == 2 ? -5 : j == 3 ? -2 :
+        j == 4 ? 0 : 3 )
+    : ( j >= 5 ? 3 : (j - 4) * 5 )
   ) : (
-    j * 4
+
+    sb_gr_prog(i) ?
+      ( j <= 0 ? 0 : j == 1 ? 2 : j == 2 ? 4 : j == 3 ? 6 : j == 4 ? 10 : 20 )
+    : ( j * 4 )
   );
 );
 
-function sb_vu_u(i, db)
+function sb_vu_lo(i) ( sb_gr_label(i, 0) );
+function sb_vu_hi(i) ( sb_gr_label(i, 5) );
+
+function sb_vu_u(i, v)
 local(j, a, b, u, done)
 (
-  sb_gr_prog(i) ? (
-    db = max(0, db);
-    u = 1; done = 0; j = 0;
-    loop(5,
-      a = sb_gr_label(i, j); b = sb_gr_label(i, j + 1);
-      ( !done && db < b ) ? (
-        u = (j + (db - a) / max(0.001, b - a)) / 5;
-        done = 1;
-      );
-      j += 1;
+  v = max(sb_vu_lo(i), min(sb_vu_hi(i), v));
+
+  u = 1; done = 0; j = 0;
+  loop(5,
+    a = sb_gr_label(i, j); b = sb_gr_label(i, j + 1);
+    ( !done && v < b ) ? (
+      u = (j + (v - a) / max(0.001, b - a)) / 5;
+      done = 1;
     );
-    max(0, min(1, u));
-  ) : (
-    max(0, min(1, db / 20));
+    j += 1;
   );
+  max(0, min(1, u));
 );
 
 function sb_gr_base()   ( sb_GR + max(0, min(255, sb_trk + 1)) * 8 );
 
 function sb_gr_slot(i)  ( sb_gr_base() + 1 + sb_gr_link(i) );
+
+function sb_tlvl_slot() ( sb_TL + max(0, min(255, sb_trk + 1)) * 2 );
+
+function sb_env_db()
+( sb_env > 0.0000001 ? 20 * log10(sb_env) : -144 );
 
 function sb_gr_nknown() ( gmem[sb_gr_base() + 1] );
 function sb_gr_ncomp()  ( sb_gr_nknown() & 15 );
@@ -995,30 +1054,81 @@ function sb_gr_ngate()  ( floor(sb_gr_nknown() / 16) & 15 );
 function sb_vu_k(tau) ( 1 - exp(-sb_vu_dt / max(0.001, tau)) );
 
 function sb_vu_tick(i)
-local(s, gr, stamp, live)
+local(s, v, stamp, live, m, lo, hi)
 (
-  s = sb_gr_slot(i);
+  m  = sb_vu_mode(i);
+  lo = sb_vu_lo(i);
+  hi = sb_vu_hi(i);
 
-  stamp = gmem[sb_gr_base()];
+  m ? (
 
-  stamp != sb_GRS[i] ? ( sb_GRS[i] = stamp; sb_GRA[i] = 0; )
-                     : ( sb_GRA[i] = min(999, sb_GRA[i] + 1) );
-  live = sb_GRA[i] < 30;
+    stamp = m == 1 ? sb_blk : gmem[sb_tlvl_slot() + 1];
 
-  gr = live ? max(0, gmem[s]) : 0;
+    stamp != sb_GRS[i] ? ( sb_GRS[i] = stamp; sb_GRA[i] = 0; )
+                       : ( sb_GRA[i] = min(999, sb_GRA[i] + 1) );
+    live = sb_GRA[i] < 30;
 
-  gr > 0.05 ? ( gr = max(0, gr + sb_gr_trim(i)) );
+    v = !live ? -144 :
+        ( m == 1 ? sb_env_db() : gmem[sb_tlvl_slot()] )
+        + sb_gr_trim(i) + sb_vu_refdb(i);
+    v = max(-144, min(24, v));
 
-  gr > sb_VU[i] ? ( sb_VU[i] = gr )
-                : ( sb_VU[i] += (gr - sb_VU[i]) * sb_vu_k(0.06) );
+    v > sb_VUR[i] ? ( sb_VUR[i] = v )
+                  : ( sb_VUR[i] += (v - sb_VUR[i]) * sb_vu_k(0.06) );
 
-  gr > sb_VUP[i] ? ( sb_VUP[i] = gr; sb_VUPT[i] = 0; ) : (
-    sb_VUPT[i] += sb_vu_dt;
-    sb_VUPT[i] > 0.4 ? ( sb_VUP[i] = max(0, sb_VUP[i] - sb_vu_dt * 20) );
+    v = max(lo, min(hi, v));
+  ) : (
+
+    s = sb_gr_slot(i);
+
+    stamp = gmem[sb_gr_base()];
+
+    stamp != sb_GRS[i] ? ( sb_GRS[i] = stamp; sb_GRA[i] = 0; )
+                       : ( sb_GRA[i] = min(999, sb_GRA[i] + 1) );
+    live = sb_GRA[i] < 30;
+
+    v = live ? max(0, gmem[s]) : 0;
+
+    v > 0.05 ? ( v = max(0, v + sb_gr_trim(i)) );
   );
+
+  sb_GRA[i] >= 999 ? (
+
+    sb_VU[i] = v; sb_VUP[i] = v;
+    m ? ( sb_VUR[i] = -144 );
+  ) : (
+    v > sb_VU[i] ? ( sb_VU[i] = v )
+                 : ( sb_VU[i] += (v - sb_VU[i]) * sb_vu_k(0.06) );
+
+    v > sb_VUP[i] ? ( sb_VUP[i] = v; sb_VUPT[i] = 0; ) : (
+      sb_VUPT[i] += sb_vu_dt;
+      sb_VUPT[i] > 0.4 ? ( sb_VUP[i] = max(lo, sb_VUP[i] - sb_vu_dt * 20) );
+    );
+  );
+
+  !m ? ( sb_VUR[i] = sb_VU[i] );
 
   live;
 );
+
+function sb_vu_pk_on(i)
+( sb_flag(i, 1) && sb_VUP[i] > sb_vu_lo(i) + 0.05 );
+
+function sb_vu_modeset(i, m)
+(
+  m != sb_vu_mode(i) ? (
+    sb_vu_setmode(i, m);
+
+    sb_VU[i]  = sb_vu_lo(i);
+    sb_VUP[i] = sb_vu_lo(i);
+    sb_VUR[i] = m ? -144 : 0;
+    sb_GRA[i] = 999;
+  );
+);
+
+function sb_vu_mode_next(i)
+local(m)
+( m = sb_vu_mode(i) + 1; m > 2 ? ( m = 0 ); sb_vu_modeset(i, m); );
 
 function sb_vu_sweep() ( 0.47 );
 
@@ -1027,7 +1137,7 @@ function sb_vu_ang(i, db)
 
 function sb_draw_vu(i)
 local(cx, cy, w, h, x0, y0, px, py, ll, a, k, n, ro, ri, live, bw, s, fs,
-      ft, sr, scy, sw, ex, ey, nx, ny)
+      ft, sr, scy, sw, ex, ey, nx, ny, m, lv, a2, bx)
 (
   live = sb_vu_tick(i);
 
@@ -1052,9 +1162,12 @@ local(cx, cy, w, h, x0, y0, px, py, ll, a, k, n, ro, ri, live, bw, s, fs,
     n += 1;
   );
 
-  sb_setcol(sb_EL[i * 8 + 6], 1);
+  m = sb_vu_mode(i);
+
   n = 0;
   loop(11,
+
+    ( m && n >= 8 ) ? sb_setcol(3, 1.3) : sb_setcol(sb_EL[i * 8 + 6], 1);
     a  = sb_vu_sweep() * (n / 5 - 1);
     ro = ll * 0.94;
     ri = ll * ((n & 1) ? 0.905 : 0.860);
@@ -1064,15 +1177,33 @@ local(cx, cy, w, h, x0, y0, px, py, ll, a, k, n, ro, ri, live, bw, s, fs,
     n += 1;
   );
 
+  ( m && ll > 12 * sb_uisc ) ? (
+
+    ro = ll * 0.955;
+    sb_setcol(3, 1.3);
+    gfx_a = 0.9;
+    n = 0;
+    loop(16,
+      a  = sb_vu_sweep() * (0.6 + n * 0.025);
+      a2 = sb_vu_sweep() * (0.6 + (n + 1) * 0.025);
+      gfx_line(px + ro * sin(a),  py - ro * cos(a),
+               px + ro * sin(a2), py - ro * cos(a2), 1);
+      n += 1;
+    );
+  );
+
   h >= 30 * sb_uisc ? (
 
     fs = max(6, floor(h * 0.18 + 0.5));
     gfx_setfont(2, "Arial", fs);
-    gfx_a = 0.85;
     n = 0;
     loop(6,
-      a = sb_vu_sweep() * (n / 2.5 - 1);
-      sprintf(#sb_tmp, "%d", floor(sb_gr_label(i, n) + 0.5));
+
+      ( m && n >= 4 ) ? sb_setcol(3, 1.3) : sb_setcol(sb_EL[i * 8 + 6], 1);
+      gfx_a = 0.85;
+      a  = sb_vu_sweep() * (n / 2.5 - 1);
+      lv = floor(sb_gr_label(i, n) + 0.5);
+      lv > 0 ? sprintf(#sb_tmp, "+%d", lv) : sprintf(#sb_tmp, "%d", lv);
       gfx_measurestr(#sb_tmp, sb_tw, sb_th);
       ro = ll * 1.0;
       gfx_x = px + ro * sin(a) - sb_tw * 0.5;
@@ -1083,26 +1214,35 @@ local(cx, cy, w, h, x0, y0, px, py, ll, a, k, n, ro, ri, live, bw, s, fs,
   );
 
   h >= 38 * sb_uisc ? (
+
+    sb_setcol(sb_EL[i * 8 + 6], 1);
     gfx_a = 0.7;
     gfx_setfont(2, "Arial", max(6, floor(h * 0.22 + 0.5)));
 
     ( sb_drag_mode == 8 && sb_drag_idx == i ) ?
       sprintf(#sb_tmp, sb_gr_trim(i) > 0 ? "TRIM +%.1f" : "TRIM %.1f",
               sb_gr_trim(i)) :
-    sb_flag(i, 4) ? sprintf(#sb_tmp, "%.1f dB", sb_VU[i])
-                  : strcpy(#sb_tmp, "dB");
+    sb_flag(i, 4) ? (
+      ( sb_vu_mode(i) && sb_VUR[i] <= -90 ) ?
+        strcpy(#sb_tmp, "-inf dB")
+      : sprintf(#sb_tmp, "%.1f dB", sb_VUR[i])
+    ) : strcpy(#sb_tmp, "dB");
     gfx_measurestr(#sb_tmp, sb_tw, sb_th);
     gfx_x = cx - sb_tw * 0.5; gfx_y = y0 + h * 0.55;
     gfx_drawstr(#sb_tmp);
+
+    m == 1 ? strcpy(#sb_tmp, "INPUT")  :
+    m == 2 ? strcpy(#sb_tmp, "OUTPUT")
+           : strcpy(#sb_tmp, "COMPRESSION");
     gfx_setfont(2, "Arial", max(5, floor(h * 0.115 + 0.5)));
-    gfx_measurestr("COMPRESSION", sb_tw, sb_th);
+    gfx_measurestr(#sb_tmp, sb_tw, sb_th);
     sb_tw < w * 0.95 ? (
       gfx_x = cx - sb_tw * 0.5; gfx_y = y0 + h * 0.74;
-      gfx_drawstr("COMPRESSION");
+      gfx_drawstr(#sb_tmp);
     );
   );
 
-  sb_flag(i, 1) && sb_VUP[i] > 0.05 ? (
+  sb_vu_pk_on(i) ? (
     a  = sb_vu_ang(i, sb_VUP[i]);
     ro = ll * 0.94; ri = ll * 0.860;
     gfx_r = 1; gfx_g = 0.55; gfx_b = 0.1; gfx_a = 0.9;
@@ -1150,6 +1290,22 @@ local(cx, cy, w, h, x0, y0, px, py, ll, a, k, n, ro, ri, live, bw, s, fs,
   gfx_triangle(cx - ex + nx, scy - ey + ny, cx + ex - nx, scy + ey - ny,
                cx - ex - nx, scy - ey - ny);
 
+  sb_vu_btn_on(i) ? (
+
+    bx = sb_vu_btn_cx(i);
+
+    sb_vu_mode_tag(m);
+    gfx_setfont(2, "Arial", max(7, floor(ft * 0.80 + 0.5)));
+    gfx_measurestr(#sb_tmp2, sb_tw, sb_th);
+
+    ( bx - sb_tw * 0.5 > cx + sr * 1.9 && bx + sb_tw * 0.5 < x0 + w ) ? (
+      gfx_r = 0.92; gfx_g = 0.92; gfx_b = 0.93;
+      gfx_a = 0.95;
+      gfx_x = bx - sb_tw * 0.5; gfx_y = scy - sb_th * 0.5;
+      gfx_drawstr(#sb_tmp2);
+    );
+  );
+
   gfx_a = 1;
 );
 
@@ -1174,7 +1330,7 @@ local(cx, cy, vert, t, dl, gp, ln, x0, y0, j, u, up, jp, f, d, live)
 
   u = sb_vu_u(i, sb_VU[i]);
 
-  up = ( sb_flag(i, 1) && sb_VUP[i] > 0.05 ) ? sb_vu_u(i, sb_VUP[i]) : -1;
+  up = sb_vu_pk_on(i) ? sb_vu_u(i, sb_VUP[i]) : -1;
   jp = up >= 0 ? min(4, floor(up * 5)) : -1;
 
   j = 0;
@@ -1488,19 +1644,21 @@ local(i)
 );
 
 function sb_build_link_menu(cur)
-local(i, nc, ng, known, miss)
+local(i, nc, ng, known, miss, nsrc)
 (
 
   known = sb_gr_nknown() > 0;
   nc = sb_gr_ncomp(); ng = sb_gr_ngate();
 
-  sb_gr_src_name(max(1, min(6, cur)));
+  nsrc = 6;
+
+  sb_gr_src_name(max(1, min(nsrc, cur)));
   sprintf(#sb_tmp, ">Source  (%s)...", #sb_tmp2);
   sb_mi_sub(#sb_tmp);
   i = 1;
 
-  loop(6,
-    strcpy(#sb_tmp, i == 6 ? "<" : "");
+  loop(nsrc,
+    strcpy(#sb_tmp, i == nsrc ? "<" : "");
     strcat(#sb_tmp, i == cur ? "!" : "");
     sb_gr_src_name(i);
     strcat(#sb_tmp, #sb_tmp2);
@@ -1569,10 +1727,53 @@ local(j, v)
 
 function sb_build_scale_menu(i)
 (
-  sb_mi_add(8100, sb_gr_prog(i) ? "Linear   0 4 8 12 16 20"
-                                : "!Linear   0 4 8 12 16 20");
-  sb_mi_add(8101, sb_gr_prog(i) ? "!Exponential   0 2 4 6 10 20"
-                                : "Exponential   0 2 4 6 10 20");
+  sb_vu_mode(i) ? (
+    sb_mi_add(8100, sb_gr_prog(i) ? "Linear   -20 -15 -10 -5 0 +3"
+                                  : "!Linear   -20 -15 -10 -5 0 +3");
+    sb_mi_add(8101, sb_gr_prog(i) ? "!Exponential   -20 -10 -5 -2 0 +3"
+                                  : "Exponential   -20 -10 -5 -2 0 +3");
+  ) : (
+    sb_mi_add(8100, sb_gr_prog(i) ? "Linear   0 4 8 12 16 20"
+                                  : "!Linear   0 4 8 12 16 20");
+    sb_mi_add(8101, sb_gr_prog(i) ? "!Exponential   0 2 4 6 10 20"
+                                  : "Exponential   0 2 4 6 10 20");
+  );
+);
+
+function sb_build_ref_menu(i)
+local(r, j)
+(
+  r = sb_vu_refi(i);
+  sb_vu_ref_name(r);
+  sprintf(#sb_tmp, ">Reference  (%s)...", #sb_tmp2);
+  sb_mi_sub(#sb_tmp);
+  j = 0;
+  loop(6,
+    strcpy(#sb_tmp, j == 5 ? "<" : "");
+    strcat(#sb_tmp, j == r ? "!" : "");
+    sb_vu_ref_name(j);
+    strcat(#sb_tmp, #sb_tmp2);
+    sb_mi_add(8300 + j, #sb_tmp);
+    j += 1;
+  );
+);
+
+function sb_build_meas_menu(i)
+local(m, j)
+(
+  m = sb_vu_mode(i);
+  sb_vu_mode_name(m);
+  sprintf(#sb_tmp, ">Measure  (%s)...", #sb_tmp2);
+  sb_mi_sub(#sb_tmp);
+  j = 0;
+  loop(3,
+    strcpy(#sb_tmp, j == 2 ? "<" : "");
+    strcat(#sb_tmp, j == m ? "!" : "");
+    sb_vu_mode_name(j);
+    strcat(#sb_tmp, #sb_tmp2);
+    sb_mi_add(8200 + j, #sb_tmp);
+    j += 1;
+  );
 );
 
 function sb_group_name(g)
@@ -1738,7 +1939,8 @@ local(a, c, v, j)
 
     sprintf(#sb_tmp, "Rename  (%s)...", sb_name(i)); sb_mi_add(1, #sb_tmp);
     sb_mi_sep();
-    sb_build_link_menu(c[1]);
+    sb_build_meas_menu(i);
+    sb_vu_mode(i) ? sb_build_ref_menu(i) : sb_build_link_menu(c[1]);
     sb_build_scale_menu(i);
     sb_build_color_menu(c[6]);
     sb_build_vu_size_menu(c[5]);
@@ -1799,6 +2001,8 @@ local(a, c, v, j)
 
   a == 8100 ? ( sb_flag(i, 2) ? sb_togflag(i, 2) ) :
   a == 8101 ? ( sb_flag(i, 2) ? 0 : sb_togflag(i, 2) ) :
+  a >= 8200 && a < 8300 ? sb_vu_modeset(i, a - 8200) :
+  a >= 8300 && a < 8400 ? sb_vu_setref(i, a - 8300) :
   a == 19 ? sb_togflag(i, 4) :
   a == 1999 ? sb_pal_start(i) :
   a >= 1000 && a < 2000 ? ( c[6] = a - 1000; ) :
@@ -2126,6 +2330,11 @@ local(i)
   sb_GRA   = 1456;
   memset(sb_VU, 0, 320);
 
+  i = 0; loop(64, sb_GRA[i] = 999; i += 1;);
+
+  sb_VUR   = 1776;
+  memset(sb_VUR, 0, 64);
+
   sb_FBL   = 1520;
   i = 0; loop(sb_MAX, sb_FBL[i] = -1; i += 1;);
 
@@ -2140,6 +2349,7 @@ local(i)
   sb_ccm_age = 0;
 
   sb_GR    = 4096;
+  sb_TL    = 61440;
 
   sb_CCM   = 16384;
   sb_FBK   = 32768;
@@ -2180,6 +2390,11 @@ local(i)
 
   sb_vu_dt = 0.03;
   sb_vu_lt = 0;
+
+  sb_env     = 0;
+  sb_rel     = exp(-1 / (max(1, srate) * 0.030));
+  sb_meas_on = 0;
+  sb_blk     = 0;
 
   sb_arc0 = -2.35; sb_arc1 = 2.35; sb_arcr = sb_arc1 - sb_arc0;
   sb_rowh = 36;
@@ -2223,11 +2438,31 @@ local(i)
   i = 0; loop(sb_MAX, sb_LASTV[i] = -1; i += 1;);
 );
 
+function sb_sample(l, r)
+local(pk)
+(
+  pk = abs(l);
+  abs(r) > pk ? ( pk = abs(r) );
+  sb_env = pk > sb_env ? pk : sb_env * sb_rel;
+);
+
 function sb_block()
-local(i, v, ch, kb, fb, w)
+local(i, v, ch, kb, fb, w, meas)
 (
 
   sb_trk = get_host_placement(sb_hp_pos, sb_hp_flags);
+
+  sb_blk += 1;
+  sb_blk > 10000000 ? ( sb_blk = 1 );
+
+  meas = 0;
+  i = 0;
+  loop(sb_MAX,
+    ( sb_type(i) == 6 && sb_vu_mode(i) == 1 ) ? ( meas = 1 );
+    i += 1;
+  );
+  sb_meas_on = meas;
+  !meas ? ( sb_env = 0 );
 
   kb = sb_CCM + max(0, min(255, sb_trk + 1)) * 64;
   fb = sb_FBK + max(0, min(255, sb_trk + 1)) * 64;
@@ -2566,6 +2801,15 @@ local(i, mx, my, spd, cur, t, dbl, fine, c, tc, tr, rev, d, ty, tip, tipi)
         sb_drag_idx = 0; sb_drag_mode = 5;
       ) : (
         cur = sb_pick(mx, my);
+
+        ( !sb_edit && cur >= 0 && sb_type(cur) == 6 &&
+          sb_vu_btn_hit(cur, mx, my) ) ? (
+
+          sb_vu_mode_next(cur);
+          sb_drag_idx = -1; sb_drag_mode = 0;
+          sb_last_click_idx = -1;
+          cur = -2;
+        );
 
         ( !sb_edit && cur >= 0 && sb_type(cur) == 6 &&
           sb_vu_screw_hit(cur, mx, my) ) ? (

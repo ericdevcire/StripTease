@@ -20,7 +20,7 @@ This document covers the package content, the setup, the exhaustive list of ever
 ### Installation
 
 *   Copy the panels, `stripbus_panel.jsfx-inc` and `StripBus.jsfx` into `<REAPER resource path>/Effects/StripBus/` (the provided FX chains expect exactly this folder name).
-*   Copy the two `.lua` scripts into `<REAPER resource path>/Scripts/` and add them via *Actions > Show action list > New action > Load ReaScript*.
+*   Put the two `.lua` scripts anywhere REAPER can reach them — `<REAPER resource path>/Scripts/`, or simply next to the JSFX in `Effects/StripBus/` — and add them via *Actions > Show action list > New action > Load ReaScript*.
 *   Copy the `.RfxChain` files into `<REAPER resource path>/FXChains/` if you want the ready-made chains.
 *   In the mixer, enable **Show embedded UI in MCP** on the panel's FX slot so the StripBus interface is visible in your mixer strip.
 
@@ -57,7 +57,7 @@ Pick the panel height that suits your mixer in the FX browser. Whatever size you
 | **Knob** | Rotary control, 0–127. Sends a MIDI CC and/or drives a linked plugin parameter. |
 | **Toggle** | On/off switch (0 / 127), with an optional separate label for the ON state. |
 | **Radio** | Multi-position selector, 2 to 6 steps, horizontal or vertical. |
-| **GR meter** | Needle VU showing gain reduction, with a calibration screw. |
+| **GR meter** | Needle VU showing **gain reduction or a level** (one at a time), with a calibration screw. |
 | **GR bar** | Bar-graph gain reduction meter, horizontal or vertical. |
 | **Separator** | Horizontal line to group controls. |
 | **Title** | Standalone text label. |
@@ -119,7 +119,7 @@ Right-click anywhere in a panel. Clicking on an element opens that element's men
 *   **Color...** — **Palette...** (custom color) plus the eleven presets listed above.
 *   **Size...** — Tiny, Small, Medium, Large, Very large, Huge.
 *   **Positions  (n)...** — *Radios only.* 2 to 6 steps.
-*   **Vertical** — *Radios only.* Switches the row of buttons to a column.
+*   **Vertical** — *Radios only.* Switches the row of buttons to a column, counted **from the bottom up**: the first position sits at the bottom and the values climb, the way a rotary selector or a fader reads.
 *   **Momentary** — *Toggles only.* The switch stays ON only while the mouse button is held.
 *   **Bipolar** — *Knobs only.* Default/reset value becomes 64 and the ring fills from the center — for pan, EQ gain, etc.
 *   **Init at max** — *Knobs only.* Default/reset value becomes 127.
@@ -130,13 +130,20 @@ Right-click anywhere in a panel. Clicking on an element opens that element's men
 ### 3.3 GR meter menu
 
 *   **Rename  (name)...**
-*   **Source  (Compressor n)...** — Which plugin on the track the meter reads: **Compressor 1 to 4** or **Gate 1 to 2**. When the script knows the track, sources with no matching plugin are flagged `-- none`. Gates are identified by keywords in the plugin name (*gate*, *expander*, *Pro-G*); a gate detected as a compressor is simply read as the corresponding Compressor number.
-*   **Linear   0 4 8 12 16 20** / **Exponential   0 2 4 6 10 20** — Scale of the dial.
+*   **Measure  (Gain reduction)...** — What the needle shows, one at a time:
+    *   **Gain reduction** — dB of compression (default).
+    *   **Input level** — level measured by the panel itself, at its own position in the FX chain. Put the panel at the top of the chain and it reads the strip's input.
+    *   **Output level** — level leaving the FX chain, before the fader.
+
+    Neither level mode needs anything installed on the track. The caption under the needle reads `COMPRESSION`, `INPUT` or `OUTPUT` accordingly, and the small **`GR` / `IN` / `OUT`** word at the bottom right of the meter, next to the trim screw, is clickable — it cycles through the three without opening the menu.
+*   **Reference  (0 dBFS)...** — *Level modes only.* Which level the `0` of the dial stands for: **0 dBFS** (full scale, default), **−9**, **−12**, **−14**, **−18** or **−20 dBFS**. Pick −18 and a signal peaking at −18 dBFS parks the needle on 0, with the red zone starting there — the usual way to work with headroom on a channel strip. The numeric readout follows the same reference.
+*   **Source  (Compressor n)...** — Which plugin on the track the meter reads: **Compressor 1 to 4** or **Gate 1 to 2**. Only shown in *Gain reduction* mode — the level modes have a single measurement point and ignore it. When the script knows the track, sources with no matching plugin are flagged `-- none`. Gates are identified by keywords in the plugin name (*gate*, *expander*, *Pro-G*); a gate detected as a compressor is simply read as the corresponding Compressor number.
+*   **Linear** / **Exponential** — Scale of the dial. In gain reduction mode: `0 4 8 12 16 20` or `0 2 4 6 10 20`. In level mode the dial reads dBFS over a 40 dB window: `-40 -32 -24 -16 -8 0` or `-40 -20 -10 -5 -2 0`. In both cases the needle rests on the left and swings right as the reading grows.
 *   **Color...** — Palette + eleven presets.
 *   **Size  (n px)...** — Tiny 90 px, Small 105 px, Medium 120 px, Large 150 px, Very large 180 px, Huge 210 px.
-*   **Show value** — Numeric dB readout under the needle.
-*   **Peak hold** — Holds the maximum reading for a moment.
-*   **Edit mode**, **Duplicate**, **Delete** — Duplicating a meter keeps its source and its trim.
+*   **Show value** — Numeric dB readout under the needle: reduction in gain reduction mode, level in dBFS (negative) in level mode.
+*   **Peak hold** — Holds the extreme reading for a moment — maximum reduction, or loudest peak.
+*   **Edit mode**, **Duplicate**, **Delete** — Duplicating a meter keeps its mode, its source and its trim.
 
 ### 3.4 GR bar menu
 
@@ -177,6 +184,7 @@ Every **Color...** submenu starts with **Palette...**, which opens the operating
 | Click / drag on a radio | Select the position under the mouse |
 | Drag the VU calibration screw | Trim the meter, −6 to +6 dB in 0.5 dB steps (the reading shows `TRIM +x.x`) |
 | Double-click the VU screw | Reset the trim to 0 |
+| Click the VU `GR` / `IN` / `OUT` label | Cycle the measurement — gain reduction, input level, output level |
 | Wheel over the panel | Scroll the panel |
 | **Shift** + wheel | Scroll faster |
 | Drag the background, or the right-edge scrollbar | Scroll the panel |
@@ -218,9 +226,13 @@ Direct Link applies to knobs, toggles and radios. Meters are fed by the GR syste
 
 
 
-## 6. Gain Reduction metering
+## 6. Metering — gain reduction and levels
 
-GR meters and GR bars read a single value per source: **Compressor 1 to 4** or **Gate 1 to 2**, counted in FX-chain order on the same track as the panel.
+A needle meter can show three things, chosen with *Measure...* in its right-click menu: the **gain reduction** of a source, the **input level**, or the **output level**. GR bars always show gain reduction.
+
+For gain reduction, the meter reads a single value per source: **Compressor 1 to 4** or **Gate 1 to 2**, counted in FX-chain order on the same track as the panel.
+
+### Gain reduction
 
 **Two ways to get that value:**
 
@@ -232,11 +244,37 @@ GR meters and GR bars read a single value per source: **Compressor 1 to 4** or *
    *   Set **Compressor (number on this track)** to the same number on both, and point your GR meter at that same *Compressor n*.
    *   **Makeup** — `Auto` tracks the plugin's makeup gain by itself (recommended); `Manual` lets you enter the exact **Manual makeup (dB)** you dialed in the compressor, from 0 to 24 dB.
 
-**Reading and adjusting the meter:**
+### Levels
 
-*   **Scale** — *Linear* (0 4 8 12 16 20) or *Exponential* (0 2 4 6 10 20), the latter giving more resolution in the first few dB.
-*   **Trim** — Drag the screw at the bottom of the needle meter to offset the reading by up to ±6 dB, which is handy to match the calibration of a plugin's own meter. Double-click the screw to zero it.
-*   **Show value** displays the numeric dB, **Peak hold** freezes the maximum for a moment.
+The two level modes watch the audio instead of the compression, and **neither needs anything added to the track**. They differ only by where the measurement is taken:
+
+| Mode | Measured at | How |
+| --- | --- | --- |
+| **Input level** | The panel's own slot in the FX chain | The panel measures the audio flowing through it |
+| **Output level** | End of the FX chain, before the fader | `StripBus System.lua` reads the track meter and undoes the fader |
+
+A plugin only ever sees the audio at *its own* position, which is what makes *Input level* positional: put the panel at the top of the FX chain and it reads what enters the strip; move it below a plugin and it reads that plugin's output. *Output level* is the opposite — it always reads the end of the chain, wherever the panel sits.
+
+**About the pre-fader reading.** REAPER's track meter is post-fader, so the script divides it by the track's volume before publishing: moving the fader no longer moves the needle, and what you read is the level leaving your FX chain. Three things to know:
+
+*   A **muted track**, or a fader pulled to −∞, kills the meter REAPER feeds us — there is nothing left to compensate. The mode then reports no data (needle left, orange dot) rather than a misleading −inf.
+*   Panning does not disturb it: REAPER's balance attenuates the opposite channel, and the meter takes the loudest of the two.
+*   If you have turned on **Options > Pre-fader track metering**, REAPER is already giving a pre-fader value and the compensation works against you — turn that option off, or use **Input level** with the panel last in the chain, which measures the same point exactly and ignores every REAPER setting.
+
+### Reading a level
+
+The dial spans **23 dB, from −20 on the left up to +3 on the right**, relative to whatever *Reference* you picked (0 dBFS out of the box), so the needle swings right as the signal gets louder, exactly like the gain reduction scale grows to the right. The last fifth of the dial — from **0 to +3 dB** — is drawn in red, graduations and figures included, so an over is unmistakable. Readings are peak values with a 30 ms release; the numeric readout keeps showing the true level even when the needle is pinned at +3.
+
+When nothing is publishing, the needle sits at the far left, the readout shows `-inf dB` and the small orange dot lights up in the corner. That dot means *no data at all* — the script not running, the track muted, or the FX chain not processing. Real silence gives you the same needle position and `-inf dB`, but **no dot**.
+
+### Reading and adjusting the meter
+
+*   **Scale** — Gain reduction: *Linear* (0 4 8 12 16 20) or *Exponential* (0 2 4 6 10 20), the latter giving more resolution in the first few dB. Levels: *Linear* (−20 −15 −10 −5 0 +3) or *Exponential* (−20 −10 −5 −2 0 +3), the latter giving more resolution near full scale. Both end on the red 0 → +3 zone.
+*   **Reference** — In level mode the dial is calibrated in dBFS by default (0 = full scale). *Reference...* moves that 0 down to −9, −12, −14, −18 or −20 dBFS, so the meter reads your working headroom instead of the distance to clipping. It shifts the dial, the readout and the red zone together.
+*   **Trim** — Drag the screw at the bottom of the needle meter to offset the reading by up to ±6 dB. On a GR meter this matches the calibration of a plugin's own meter; on a level meter it fine-tunes on top of the reference. Double-click the screw to zero it.
+*   **The GR / IN / OUT switch** — The little `GR`, `IN` or `OUT` word printed at the bottom right of the meter, next to the screw, is clickable: one click cycles the measurement, so you can flip a strip's meter between compression and levels while listening, without going through the right-click menu. It is hidden on meters too small to print it legibly.
+*   **Show value** displays the numeric dB — the reduction, or the level in dBFS (`-inf` below −90). **Peak hold** freezes the maximum reduction, or the loudest peak, for a moment.
+*   Both modes share the same ballistics: instant rise toward the higher reading, smooth release.
 
 
 

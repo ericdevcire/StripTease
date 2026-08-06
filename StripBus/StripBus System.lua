@@ -29,6 +29,8 @@ local TIPMAX = 23
 
 local LRN  = 12288
 
+local TL   = 61440
+
 local LNK  = 65536
 
 local WSH     = 131072
@@ -50,6 +52,7 @@ reaper.gmem_attach("StripBus")
 local sources = {}
 local links   = {}
 local by_key  = {}
+local panels  = {}
 
 local dlinks  = {}
 local dstate  = {}
@@ -607,7 +610,7 @@ local function PSync()
 end
 
 local function Rescan()
-  sources, links, by_key, dlinks = {}, {}, {}, {}
+  sources, links, by_key, dlinks, panels = {}, {}, {}, {}, {}
 
   ResetCaches()
 
@@ -622,6 +625,7 @@ local function Rescan()
       if IsPanel(tr, fx) then panelfx = fx; break end
     end
     if panelfx then
+      panels[#panels + 1] = { tr = tr, k = k }
 
       for el = 0, NEL - 1 do
         reaper.gmem_write(LNK + k * KSTRIDE + el, 0)
@@ -677,6 +681,26 @@ local function Run()
 
       reaper.gmem_write(b + 1, #s.fx + #s.gate * 16)
       reaper.gmem_write(b, tick)
+    end
+  end
+
+  for _, p in ipairs(panels) do
+    if Valid(p.tr) then
+
+      local vol  = reaper.GetMediaTrackInfo_Value(p.tr, "D_VOL")   or 1
+      local mute = reaper.GetMediaTrackInfo_Value(p.tr, "B_MUTE")  or 0
+
+      if mute < 0.5 and vol > 0.000001 then
+        local pk = reaper.Track_GetPeakInfo(p.tr, 0) or 0
+        local r  = reaper.Track_GetPeakInfo(p.tr, 1) or 0
+        if r > pk then pk = r end
+
+        pk = pk / vol
+
+        reaper.gmem_write(TL + p.k * 2,
+                          pk > 0.0000001 and math.log(pk) * 8.6858896 or -144)
+        reaper.gmem_write(TL + p.k * 2 + 1, tick)
+      end
     end
   end
 

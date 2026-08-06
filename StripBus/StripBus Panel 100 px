@@ -75,5 +75,8 @@ sb_serialize();
 @block
 sb_block();
 
+@sample
+sb_meas_on ? sb_sample(spl0, spl1);
+
 @gfx 80 100
 sb_gfx();
