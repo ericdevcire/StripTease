@@ -315,10 +315,11 @@ function sb_ring_ref() ( sb_show_ring ? 9 : 3 );
 
 function sb_top() ( 5 * sb_uisc );
 
-function sb_hw() ( sb_cell_w() * 0.25 );
-function sb_hh() ( sb_rowh * 0.25 );
+function sb_hw() ( sb_cell_w() * 0.125 );
+function sb_hh() ( sb_rowh * 0.125 );
 
-function sb_maxhcol() ( max(0, 4 * sb_cols - 4) );
+function sb_maxhcol() ( max(0, 8 * sb_cols - 8) );
+function sb_maxhrow() ( 252 );
 
 function sb_elem_h(i)
 local(r)
@@ -365,7 +366,7 @@ local(i, w)
 
 function sb_foot(i)
 (
-  sb_type(i) == 3 || sb_type(i) == 4 ? sb_hh() :
+  sb_type(i) == 3 || sb_type(i) == 4 ? 2 * sb_hh() :
 
   sb_type(i) == 7 ?
     max(sb_rowh, (sb_rowh + sb_lab_h()) * 0.5 + sb_bar_hh(i)) :
@@ -542,20 +543,20 @@ function sb_scroll_drag(v)
   sb_sync_set(0, sb_sync_get(0) + 1);
 );
 
-function sb_cx(i) ( (sb_EL[i * 8 + 3] + 2) * sb_hw() );
+function sb_cx(i) ( (sb_EL[i * 8 + 3] + 4) * sb_hw() );
 function sb_row_y(i) ( sb_top() + sb_EL[i * 8 + 4] * sb_hh() - sb_scroll );
 function sb_cy(i) ( sb_row_y(i) + (sb_rowh - sb_lab_h()) * 0.5 );
 
-function sb_sep_y(i) ( sb_row_y(i) + sb_hh() );
+function sb_sep_y(i) ( sb_row_y(i) + 2 * sb_hh() );
 
 function sb_col_at(mx)
-( max(0, min(sb_maxhcol(), floor(mx / sb_hw() - 1.5))) );
+( max(0, min(sb_maxhcol(), floor(mx / sb_hw() - 3.5))) );
 
 function sb_row_at(my)
-( max(0, min(126, floor((my + sb_scroll - sb_top()) / sb_hh() - 1.5))) );
+( max(0, min(sb_maxhrow(), floor((my + sb_scroll - sb_top()) / sb_hh() - 3.5))) );
 
 function sb_row_at_sep(my)
-( max(0, min(126, floor((my + sb_scroll - sb_top()) / sb_hh() - 0.5))) );
+( max(0, min(sb_maxhrow(), floor((my + sb_scroll - sb_top()) / sb_hh() - 1.5))) );
 
 function sb_cell_owner(col, row, except)
 local(i, res)
@@ -576,8 +577,8 @@ local(c, r, found)
   loop(32,
     c = 0;
     loop(sb_cols,
-      (!found && sb_cell_owner(c * 4, r * 4, -1) < 0) ? (
-        found = 1; sb_fc_col = c * 4; sb_fc_row = r * 4;
+      (!found && sb_cell_owner(c * 8, r * 8, -1) < 0) ? (
+        found = 1; sb_fc_col = c * 8; sb_fc_row = r * 8;
       );
       c += 1;
     );
@@ -616,7 +617,7 @@ local(i, c, o)
     sb_used(i) ? (
       c = sb_addr(i);
       c[3] = max(0, min(sb_maxhcol(), floor(c[3] + 0.5)));
-      c[4] = max(0, min(126, floor(c[4] + 0.5)));
+      c[4] = max(0, min(sb_maxhrow(), floor(c[4] + 0.5)));
     );
     i += 1;
   );
@@ -712,7 +713,8 @@ local(i, c)
     ) :
     type == 6 ? (
 
-      c[1] = 1; c[2] = 0; c[5] = 20; c[6] = 0; c[7] = 4; c[3] = max(0, sb_cols - 1);
+      c[1] = 1; c[2] = 0; c[5] = 20; c[6] = 0; c[7] = 4;
+      c[3] = max(0, 2 * (sb_cols - 1));
       strcpy(sb_name(i), "");
     ) :
     type == 7 ? (
@@ -2286,7 +2288,7 @@ local(i, v, ch, kb, fb, w)
 function sb_serialize()
 local(i, n)
 (
-  sb_ser_ver = 13;
+  sb_ser_ver = 14;
   file_var(0, sb_ser_ver);
 
   n = sb_ser_ver >= 12 ? sb_MAX : (sb_ser_ver >= 11 ? 40 : 32);
@@ -2359,6 +2361,8 @@ local(i, n)
   sb_ser_ver < 5 ? ( sb_migrate_half = 1 );
 
   sb_ser_ver < 6 ? ( sb_migrate_quarter = 1 );
+
+  sb_ser_ver < 14 ? ( sb_migrate_eighth = 1 );
   sb_magic = 0x5B0100;
   sb_cfg_dirty = 1;
 );
@@ -2468,6 +2472,19 @@ local(i, mx, my, spd, cur, t, dbl, fine, c, tc, tr, rev, d, ty, tip, tipi)
     sb_migrate_quarter = 0;
   );
 
+  sb_migrate_eighth ? (
+    i = 0;
+    loop(sb_MAX,
+      sb_used(i) ? (
+        sb_EL[i * 8 + 3] = sb_EL[i * 8 + 3] * 2;
+        sb_EL[i * 8 + 4] = sb_EL[i * 8 + 4] * 2;
+      );
+      i += 1;
+    );
+    sb_reflow();
+    sb_migrate_eighth = 0;
+  );
+
   sb_calc_rowh();
   sb_calc_colw();
 
@@ -2483,16 +2500,17 @@ local(i, mx, my, spd, cur, t, dbl, fine, c, tc, tr, rev, d, ty, tip, tipi)
     gfx_r = 1; gfx_g = 1; gfx_b = 1;
     i = 0;
     loop(sb_maxhcol() + 1,
-      gfx_a = (i & 1) ? 0.07 : 0.14;
+
+      gfx_a = ((i + 1) & 7) == 0 ? 0.16 : ( ((i + 1) & 3) == 0 ? 0.10 : 0.05 );
       d = (i + 1) * sb_hw();
       gfx_line(d, 0, d, gfx_h, 0);
       i += 1;
     );
     i = 0;
-    loop(64,
+    loop(128,
       d = sb_top() + i * sb_hh() - sb_scroll;
       ( d >= 0 && d <= gfx_h ) ? (
-        gfx_a = (i & 1) ? 0.07 : 0.14;
+        gfx_a = (i & 7) == 0 ? 0.16 : ( (i & 3) == 0 ? 0.10 : 0.05 );
         gfx_line(0, d, sb_content_w(), d, 0);
       );
       i += 1;
@@ -2702,9 +2720,10 @@ local(i, mx, my, spd, cur, t, dbl, fine, c, tc, tr, rev, d, ty, tip, tipi)
 
   tipi = -1;
   !sb_edit ? (
-    ( sb_drag_idx >= 0 && ( sb_drag_mode == 1 || sb_drag_mode == 7 ) ) ?
+    ( sb_drag_idx >= 0 &&
+      ( sb_drag_mode == 1 || sb_drag_mode == 4 || sb_drag_mode == 7 ) ) ?
       ( tipi = sb_drag_idx ) :
-    ( !sb_drag_mode && sb_hover >= 0 && sb_type(sb_hover) == 1 &&
+    ( !sb_drag_mode && sb_hover >= 0 && sb_is_ctrl(sb_hover) &&
       mx >= 0 && mx < gfx_w && my >= 0 && my < gfx_h ) ?
       ( tipi = sb_hover );
   );

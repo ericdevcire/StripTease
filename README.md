@@ -96,6 +96,8 @@ Right-clicking on any element in the StripBus panel opens a contextual menu. Dep
 
 StripBus offers a Direct Link system that completely bypasses REAPER's native MIDI CC or Parameter Modulation limits. This means the panel controls the plugin, and if you move the plugin's GUI, the panel updates instantly (bidirectional sync).
 
+Once a parameter is mapped, the source value is displayed on a small popup when hover and tweak, so you can read the actual data from the targetted plugin.
+
 **The Method to Link Correctly:**
 1. Ensure the background script (StripBus System.lua) is running.
 2. In the StripBus JSFX panel, Right-Click the knob or control you want to link.
