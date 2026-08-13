@@ -14,12 +14,13 @@ Eric
 
 
 
+<img width="1280" height="405" alt="StripBus 1" src="https://github.com/user-attachments/assets/447a9eea-473a-464b-977f-8fdc74a6f7dd" />
+
+
+
 **License & Copyright** 
 
 StripTease is freeware. You may use it for your personal workflow. Selling, commercially repackaging or redistributing it for profit — this version or any derivative — is prohibited.
-
-
-<img width="1280" height="405" alt="StripBus 1" src="https://github.com/user-attachments/assets/447a9eea-473a-464b-977f-8fdc74a6f7dd" />
 
 
 ## 1. What's in the package
