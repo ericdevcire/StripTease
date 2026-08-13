@@ -1,0 +1,107 @@
+[
+  {
+    "version": "1.0.0",
+    "time": "2026-08-06T23:54:14Z",
+    "changelog": "Premiere version distribuee via ReaPack."
+  },
+  {
+    "version": "1.0.1",
+    "time": "2026-08-07T07:24:44Z",
+    "changelog": "Correction de l'instabilite du Direct Link : la reponse du service porte desormais l'estampille de la demande (plus de reponse perimee consommee), et un parametre deja touche avant l'ouverture du menu est detecte a son mouvement."
+  },
+  {
+    "version": "1.0.2",
+    "time": "2026-08-07T07:35:57Z",
+    "changelog": "Ajout des FX chains UAD 610A et 610B Pramp. Livraison rangee par dossier de destination."
+  },
+  {
+    "version": "1.0.3",
+    "time": "2026-08-07T07:45:50Z",
+    "changelog": "Le learn en cours est annule si le panneau est supprime pendant l'apprentissage (plus d'element fantome capturant le parametre suivant)."
+  },
+  {
+    "version": "1.0.4",
+    "time": "2026-08-07T07:57:01Z",
+    "changelog": "Robustesse : la palette de couleurs ne tue plus le service quand SWS est absent. Nettoyage : suppression d'une fonction morte et d'une definition dupliquee."
+  },
+  {
+    "version": "1.0.5",
+    "time": "2026-08-07T08:07:37Z",
+    "changelog": "Optimisation CPU : les boucles par frame et par bloc audio sont bornees au dernier element reellement utilise, et la detection du metering ne teste plus que les elements occupes."
+  },
+  {
+    "version": "1.0.6",
+    "time": "2026-08-07T08:21:23Z",
+    "changelog": "Le rename et la palette ne consomment plus la reponse destinee a un autre panneau. Le build verifie desormais la coherence de la carte gmem entre JSFX et Lua."
+  },
+  {
+    "version": "1.0.7",
+    "time": "2026-08-07T08:36:20Z",
+    "changelog": "Le renommage passe desormais exclusivement par StripTease System.lua : le repli clavier silencieux est supprime, et le panneau signale NO ANSWER si le service ne repond pas."
+  },
+  {
+    "version": "1.0.8",
+    "time": "2026-08-07T08:42:46Z",
+    "changelog": "Le contrat de licence est desormais livre avec le paquet et les en-tetes y renvoient."
+  },
+  {
+    "version": "1.0.9",
+    "time": "2026-08-07T10:00:00Z",
+    "changelog": "Le learn efface l'etat 'dernier parametre touche' de REAPER au lieu de le comparer : lier un parametre qu'on vient de regler fonctionne desormais du premier coup. Rescan saute l'enumeration quand le projet n'a pas change."
+  },
+  {
+    "version": "1.1.0",
+    "time": "2026-08-07T10:06:58Z",
+    "changelog": "Le service ne publie plus le gain reduction des pistes sans panneau, et ne relit les banques de presets que si leur taille a change."
+  },
+  {
+    "version": "1.1.1",
+    "time": "2026-08-07T10:09:46Z",
+    "changelog": "Les FX d'entree d'enregistrement sont pris en compte dans l'enumeration : un Direct Link cree sur l'un d'eux survit desormais au rechargement du projet. Les apprentissages MIDI en mode relatif ne sont plus interpretes comme absolus."
+  },
+  {
+    "version": "1.1.2",
+    "time": "2026-08-07T10:12:34Z",
+    "changelog": "Le balayage des apprentissages MIDI n'est plus refait a chaque scan : une signature detecte les changements de CC declares et de chaine FX, avec rebalayage force periodique."
+  },
+  {
+    "version": "1.1.3",
+    "time": "2026-08-07T10:31:55Z",
+    "changelog": "Le Direct Link cale la valeur envoyee sur les crans reels du parametre cible (parametres a paliers et binaires), et n'ecrit plus qu'au changement de cran."
+  },
+  {
+    "version": "1.2.0",
+    "time": "2026-08-07T10:46:43Z",
+    "changelog": "Les elements du panneau pilotent le Direct Link en continu au lieu de 128 pas : plus de paliers percus sur les parametres a large plage. La sortie MIDI CC reste entiere sur 0..127."
+  },
+  {
+    "version": "1.2.1",
+    "time": "2026-08-08T11:42:36Z",
+    "changelog": "Centre exact des elements bipolaires (63.5 au lieu de 64). Le script d'installation des FX chains invalide le cache de repertoire de REAPER avant d'enumerer."
+  },
+  {
+    "version": "1.3.0",
+    "time": "2026-08-08T12:41:14Z",
+    "changelog": "Les recettes de liens apparient les plugins sur leur nom d'origine : renommer une instance ne casse plus la recette (les recettes capturees avant restent reconnues sur leur ancien nom). Le JSFX StripTease GR cede la place quand le service publie deja la reduction du compresseur visee, et le service n'ecrase plus les cases qu'il n'alimente pas. Obfuscation : renommage des liaisons internes de chaque fonction et des champs de table, des deux cotes."
+  },
+  {
+    "version": "1.3.1",
+    "time": "2026-08-08T17:39:18Z",
+    "changelog": "Les 50 sliders natifs ne sont plus affiches par REAPER : le panneau ne montre que son interface. Ils restent des parametres complets (automation, enveloppes, presets, Direct Link). La fenetre flottante reprend desormais la mise en page de l'UI embarquee : memes colonnes, memes proportions, controles au meme endroit. Correction de l'UI embarquee qui se decalait et se deformait quand la fenetre du JSFX etait ouverte : chaque surface d'affichage garde son propre etat de pointeur."
+  },
+  {
+    "version": "1.4.0",
+    "time": "2026-08-08T18:42:51Z",
+    "changelog": "Knobs lies a un parametre a paliers : le knob prend les memes crans que la cible, la molette avance d'un cran, et la valeur affichee est celle que le plugin a retenue. Onglets : un panneau peut repartir ses elements sur 2 a 4 pages, choisies par une rangee de boutons en haut et renommables au clic droit. Chaque page garde son propre defilement, et les panneaux d'un meme groupe de defilement tournent les pages ensemble. Les pages decoupent l'affichage seulement : un element range ailleurs garde sa valeur, son CC, son automation et son Direct Link."
+  },
+  {
+    "version": "1.5.0",
+    "time": "2026-08-09T21:14:15Z",
+    "changelog": ""
+  },
+  {
+    "version": "1.0.0",
+    "time": "2026-08-12T12:01:04Z",
+    "changelog": "Renommage complet du produit : StripBus devient StripTease. Les JSFX s'installent desormais dans Effects/StripTease/, les scripts dans Scripts/StripTease/, et la memoire partagee gmem change de nom. Rupture de compatibilite : un projet, un preset ou un template cree avec une version 1.x ne retrouvera pas ses panneaux. Reinstaller, puis reinserer les panneaux ou reimporter les FX chains fournies."
+  }
+]

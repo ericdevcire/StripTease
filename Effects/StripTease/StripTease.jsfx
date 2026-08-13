@@ -1,0 +1,76 @@
+desc:StripTease GR
+options:gmem=StripTease
+// ==========================================================================
+// StripTease
+// Version: 1.0.0
+// Developer: Eric Avondo
+//
+// Licence commerciale - redistribution interdite.
+// ==========================================================================
+slider1:0<0,1,1{In   -  above the compressor,Out  -  below the compressor}>Measurement point
+slider2:1<1,4,1>Compressor (number on this track)
+slider3:1<0,1,1{Manual,Auto}>Makeup
+slider4:0<0,24,0.1>Manual makeup (dB)
+in_pin:left
+in_pin:right
+out_pin:left
+out_pin:right
+@init
+GR_METER = 4096;
+GR_PROBE = 6144;
+SVC      = 49240;
+rel = exp(-1 / (srate * 0.030));
+env   = 0;
+mkest = -144;
+tick  = 0;
+in_stamp = -1;
+in_age   = 999;
+svc_stamp = -1;
+svc_seen  = 0;
+svc_t     = -1000000;
+@block
+trk = get_host_placement(hp_pos, hp_flags);
+k   = max(0, min(255, trk + 1));
+n   = max(1, min(4, slider2));
+mb = GR_METER + k * 8;
+hb = GR_PROBE + k * 8 + (n - 1) * 2;
+tick += 1;
+tick > 10000000 ? ( tick = 1 );
+slider1 < 0.5 ? (
+gmem[hb]     = env;
+gmem[hb + 1] = tick;
+) : (
+gmem[hb + 1] != in_stamp ? ( in_stamp = gmem[hb + 1]; in_age = 0; )
+: ( in_age += 1 );
+now = time_precise();
+gmem[SVC] != svc_stamp ? (
+svc_stamp = gmem[SVC];
+svc_seen ? ( svc_t = now ) : ( svc_seen = 1 );
+);
+served = ( now - svc_t < 1 ) && ( gmem[mb + 1] & 15 ) >= n;
+( in_age < 50 && !served ) ? (
+ein  = gmem[hb];
+idb  = ein > 0.0000001 ? 20 * log10(ein) : -144;
+odb  = env > 0.0000001 ? 20 * log10(env) : -144;
+diff = odb - idb;
+slider3 > 0.5 ? (
+( idb > -70 && odb > -70 ) ? (
+diff > mkest ? (
+mkest += (diff - mkest) * 0.5;
+) : (
+mkest += (diff - mkest) * (1 - exp(-samplesblock / (srate * 30)));
+);
+);
+mk = mkest;
+) : (
+mk = slider4;
+);
+gr = max(0, min(60, mk - diff));
+idb < -90 ? ( gr = 0 );
+gmem[mb + 1 + n] = gr;
+gmem[mb]         = tick;
+);
+);
+@sample
+pk  = max(abs(spl0), abs(spl1));
+env = pk > env ? pk : env * rel;

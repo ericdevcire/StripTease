@@ -1,7 +1,0 @@
-[
-  {
-    "version": "2.0.0",
-    "time": "2026-08-12T12:03:32Z",
-    "changelog": "Premiere version Lite sous le nom StripTease. Renommage complet : les JSFX s'installent desormais dans Effects/StripTease/, les scripts dans Scripts/StripTease/, et la memoire partagee gmem change de nom. Rupture de compatibilite : un projet ou un preset cree avec une version 1.x ne retrouvera pas ses panneaux. Reinstaller, puis reinserer les panneaux."
-  }
-]

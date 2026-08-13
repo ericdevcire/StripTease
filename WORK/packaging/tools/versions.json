@@ -1,0 +1,7 @@
+[
+  {
+    "version": "1.0.0",
+    "time": "2026-08-12T12:03:32Z",
+    "changelog": "Renommage complet du produit : StripBus devient StripTease. Les JSFX s'installent desormais dans Effects/StripTease/, les scripts dans Scripts/StripTease/, et la memoire partagee gmem change de nom. Rupture de compatibilite : un projet, un preset ou un template cree avec une version 1.x ne retrouvera pas ses panneaux. Reinstaller, puis reinserer les panneaux ou reimporter les FX chains fournies."
+  }
+]
