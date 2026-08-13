@@ -1,4 +1,4 @@
-<img width="1280" height="405" alt="StripBus 1" src="https://github.com/user-attachments/assets/447a9eea-473a-464b-977f-8fdc74a6f7dd" />
+
 # STRIPTEASE User Manual (BETA)
 
 Welcome to the comprehensive guide for the StripTease system in REAPER. StripTease turns any REAPER track into a customizable console strip: knobs, switches and Gain Reduction meters that live directly in the mixer (MCP), drive your real plugins, and travel with your presets and track templates.
@@ -19,7 +19,7 @@ Eric
 StripTease is freeware. You may use it for your personal workflow. Selling, commercially repackaging or redistributing it for profit — this version or any derivative — is prohibited.
 
 
-
+<img width="1280" height="405" alt="StripBus 1" src="https://github.com/user-attachments/assets/447a9eea-473a-464b-977f-8fdc74a6f7dd" />
 
 
 ## 1. What's in the package
