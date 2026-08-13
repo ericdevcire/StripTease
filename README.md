@@ -22,10 +22,19 @@ Eric
 
 ### Installation
 
+**Method 1: Using ReaPack (Recommended)**
+The easiest way to install and keep StripTease up to date is via ReaPack.
+1. In REAPER, go to **Extensions > ReaPack > Import a repository**.
+2. Paste the following URL: `https://raw.githubusercontent.com/ericdevcire/StripTease/main/index.xml`
+3. Go to **Extensions > ReaPack > Browse packages**, search for `StripTease`, right-click on it and select **Install**.
+4. Click **Apply** in the bottom right corner.
+5. In the mixer, enable **Show embedded UI in MCP** on the panel's FX slot so the StripTease interface is visible in your mixer strip.
+
+**Method 2: Manual Installation**
 *   Copy the panels, `striptease_panel.jsfx-inc` and `StripTease.jsfx` into `<REAPER resource path>/Effects/StripTease/` (the provided FX chains expect exactly this folder name).
 *   Put the two `.lua` scripts anywhere REAPER can reach them — `<REAPER resource path>/Scripts/`, or simply next to the JSFX in `Effects/StripTease/` — and add them via *Actions > Show action list > New action > Load ReaScript*.
 *   Copy the `.RfxChain` files into `<REAPER resource path>/FXChains/` if you want the ready-made chains.
-*   In the mixer, enable **Show embedded UI in MCP** on the panel's FX slot so the StripTease interface is visible in your mixer strip.
+*   In the mixer, enable **Show embedded UI in MCP** on the panel's FX slot.
 
 ### StripTease System.lua
 
