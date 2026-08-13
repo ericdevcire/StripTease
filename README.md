@@ -1,4 +1,4 @@
-# STRIPTEASE User Manual
+# STRIPTEASE User Manual (BETA)
 
 Welcome to the comprehensive guide for the StripTease system in REAPER. StripTease turns any REAPER track into a customizable console strip: knobs, switches and Gain Reduction meters that live directly in the mixer (MCP), drive your real plugins, and travel with your presets and track templates.
 
