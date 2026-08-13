@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <index version="1" name="StripTease">
-  <category name="Effects">
+  <category name=".">
     <reapack name="StripTease" type="effect" desc="StripTease">
       <metadata>
         <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}}
