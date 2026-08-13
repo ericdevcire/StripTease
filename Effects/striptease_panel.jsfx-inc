@@ -4,7 +4,8 @@ desc:StripTease Panel engine
 // Version: 1.0.0
 // Developer: Eric Avondo
 //
-// Licence commerciale - redistribution interdite.
+// Freeware - personal use. Resale or redistribution for profit is
+// prohibited. See LICENSE.txt.
 // ==========================================================================
 @init
 function q2c(z0)
@@ -2904,7 +2905,7 @@ q7d(z4, 127) :
 q7d(z4, q84(z4) >= 64 ? 0 : 127);
 q2i = z4; q2k = 4;
 ) : (
-z6 ? q7d(z4, q37(z4, 2) ? 64 : (q37(z4, 4) ? 127 : 0)) : (
+z6 ? q7d(z4, q37(z4, 2) ? 63.5 : (q37(z4, 4) ? 127 : 0)) : (
 q2i  = z4;
 q2k = 1;
 q6c     = z2;

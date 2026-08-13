@@ -5,7 +5,8 @@ options:gmem=StripTease
 // Version: 1.0.0
 // Developer: Eric Avondo
 //
-// Licence commerciale - redistribution interdite.
+// Freeware - personal use. Resale or redistribution for profit is
+// prohibited. See LICENSE.txt.
 // ==========================================================================
 slider1:0<0,1,1{In   -  above the compressor,Out  -  below the compressor}>Measurement point
 slider2:1<1,4,1>Compressor (number on this track)
