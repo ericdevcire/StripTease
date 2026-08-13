@@ -9,6 +9,10 @@ Feel free to support this project: if you like and find StripTease useful, you c
 Have fun !
 Eric
 
+---
+**License** — StripTease is freeware. You may use it for your personal workflow. Selling, commercially repackaging or redistributing it for profit — this version or any derivative — is prohibited.
+---
+
 ## 1. What's in the package
 
 | File | Role |
@@ -440,6 +444,6 @@ Two things stay outside of this: the per-module default preset (*Save preset as 
 
 ---
 
-**License** — StripTease is freeware. You may use it for your personal workflow. Selling, commercially repackaging or redistributing it for profit — this version or any derivative — is prohibited.
+
 
 
