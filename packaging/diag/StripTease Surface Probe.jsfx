@@ -1,0 +1,92 @@
+desc:StripTease Surface Probe
+options:no_meter
+
+// ============================================================================
+// Outil de diagnostic — ne fait pas partie du produit, ne pas livrer.
+//
+// REAPER appelle @gfx une fois par surface visible. Cette sonde affiche, pour
+// chacune, ce que REAPER lui donne : taille, facteur retina, gfx_ext_flags.
+// Chaque surface affiche aussi la derniere lecture de l'autre, il suffit donc
+// d'en regarder une seule.
+//
+// Mode d'emploi
+//   1. poser la sonde sur une piste, activer "Show embedded UI in MCP" sur son
+//      slot, et lire les chiffres dans la tranche du mixer, fenetre fermee ;
+//   2. ouvrir la fenetre du JSFX et relire les memes chiffres.
+//
+// Si la ligne "MCP" change quand la fenetre s'ouvre, c'est REAPER qui redonne
+// une geometrie differente a la surface embarquee, et le panneau ne fait que
+// suivre. Si elle ne bouge pas, la geometrie est hors de cause.
+// ============================================================================
+
+@init
+
+gfx_ext_retina = 1;
+
+// 2 surfaces x 8 cases : 0 = vue vue au moins une fois, 1..5 = mesures
+M = 0;
+memset(M, 0, 16);
+
+@gfx 80 300
+
+v = (gfx_ext_flags & 1) ? 1 : 0;
+b = v * 8;
+
+M[b]     = 1;
+M[b + 1] = gfx_w;
+M[b + 2] = gfx_h;
+M[b + 3] = gfx_ext_retina;
+M[b + 4] = gfx_ext_flags;
+
+sc = max(1, gfx_ext_retina);
+
+gfx_r = 0.08; gfx_g = 0.08; gfx_b = 0.10; gfx_a = 1;
+gfx_rect(0, 0, gfx_w, gfx_h);
+
+gfx_setfont(1, "Arial", floor(11 * sc + 0.5));
+lh = gfx_texth + 2 * sc;
+y  = 4 * sc;
+
+// --- surface en cours -------------------------------------------------------
+gfx_r = 1; gfx_g = 0.85; gfx_b = 0.2;
+gfx_x = 4 * sc; gfx_y = y;
+gfx_drawstr(v ? "ici : MCP/TCP" : "ici : fenetre");
+y += lh;
+
+gfx_r = 1; gfx_g = 1; gfx_b = 1;
+gfx_x = 4 * sc; gfx_y = y;
+gfx_printf("%dx%d", gfx_w, gfx_h);
+y += lh;
+
+gfx_x = 4 * sc; gfx_y = y;
+gfx_printf("retina %d", gfx_ext_retina);
+y += lh;
+
+gfx_x = 4 * sc; gfx_y = y;
+gfx_printf("flags %d", gfx_ext_flags);
+y += lh + 4 * sc;
+
+// --- derniere lecture de l'autre surface ------------------------------------
+o = 8 - b;
+
+gfx_r = 0.5; gfx_g = 0.8; gfx_b = 1;
+gfx_x = 4 * sc; gfx_y = y;
+gfx_drawstr(v ? "autre : fenetre" : "autre : MCP/TCP");
+y += lh;
+
+gfx_r = 0.75; gfx_g = 0.75; gfx_b = 0.75;
+M[o] ? (
+  gfx_x = 4 * sc; gfx_y = y;
+  gfx_printf("%dx%d", M[o + 1], M[o + 2]);
+  y += lh;
+
+  gfx_x = 4 * sc; gfx_y = y;
+  gfx_printf("retina %d", M[o + 3]);
+  y += lh;
+
+  gfx_x = 4 * sc; gfx_y = y;
+  gfx_printf("flags %d", M[o + 4]);
+) : (
+  gfx_x = 4 * sc; gfx_y = y;
+  gfx_drawstr("(jamais vue)");
+);

@@ -1,0 +1,10 @@
+{
+  "index_name": "StripTease",
+  "category": ".",
+  "author": "Eric Avondo",
+  "base_url": "https://example.invalid/r/CHANGE-ME",
+  "website": "https://github.com/ericdevcire/StripTease",
+  "donation": "https://ko-fi.com/ericire58504",
+  "about": "StripTease transforme n'importe quelle piste REAPER en tranche de console : boutons, interrupteurs et VU de gain reduction directement dans le mixer, pilotant vos vrais plugins.",
+  "license_notice": "Licence commerciale - redistribution interdite."
+}

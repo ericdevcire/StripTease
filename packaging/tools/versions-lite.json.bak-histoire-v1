@@ -1,0 +1,22 @@
+[
+  {
+    "version": "1.0.0",
+    "time": "2026-08-08T13:58:16Z",
+    "changelog": "Premiere version Lite : 2 tailles de panneau, 12 elements et 1 metre par panneau, Direct Link complet dans le projet. Recettes, JSFX de mesure de gain reduction et bibliotheque de FX chains reserves a StripTease Pro."
+  },
+  {
+    "version": "1.4.0",
+    "time": "2026-08-08T18:42:52Z",
+    "changelog": "Knobs lies a un parametre a paliers : le knob prend les memes crans que la cible, la molette avance d'un cran, et la valeur affichee est celle que le plugin a retenue. Onglets : un panneau peut repartir ses elements sur 2 a 4 pages, choisies par une rangee de boutons en haut et renommables au clic droit. Chaque page garde son propre defilement, et les panneaux d'un meme groupe de defilement tournent les pages ensemble. Les pages decoupent l'affichage seulement : un element range ailleurs garde sa valeur, son CC, son automation et son Direct Link."
+  },
+  {
+    "version": "1.5.0",
+    "time": "2026-08-09T21:14:16Z",
+    "changelog": ""
+  },
+  {
+    "version": "2.0.0",
+    "time": "2026-08-12T12:01:10Z",
+    "changelog": "Premiere version Lite sous le nom StripTease. Renommage complet : les JSFX s'installent desormais dans Effects/StripTease/, les scripts dans Scripts/StripTease/, et la memoire partagee gmem change de nom. Rupture de compatibilite : un projet ou un preset cree avec une version 1.x ne retrouvera pas ses panneaux. Reinstaller, puis reinserer les panneaux."
+  }
+]

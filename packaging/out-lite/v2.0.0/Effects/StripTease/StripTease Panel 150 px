@@ -1,0 +1,70 @@
+desc:StripTease Panel 150 px
+options:gmem=StripTease
+// ==========================================================================
+// StripTease Panel 150 px
+// Version: 2.0.0
+// Developer: Eric Avondo
+//
+// StripTease Lite - gratuit, redistribution interdite.
+// ==========================================================================
+slider1:0<0,127,0.01>-Elem 1
+slider2:0<0,127,0.01>-Elem 2
+slider3:0<0,127,0.01>-Elem 3
+slider4:0<0,127,0.01>-Elem 4
+slider5:0<0,127,0.01>-Elem 5
+slider6:0<0,127,0.01>-Elem 6
+slider7:0<0,127,0.01>-Elem 7
+slider8:0<0,127,0.01>-Elem 8
+slider9:0<0,127,0.01>-Elem 9
+slider10:0<0,127,0.01>-Elem 10
+slider11:0<0,127,0.01>-Elem 11
+slider12:0<0,127,0.01>-Elem 12
+slider13:0<0,127,0.01>-Elem 13
+slider14:0<0,127,0.01>-Elem 14
+slider15:0<0,127,0.01>-Elem 15
+slider16:0<0,127,0.01>-Elem 16
+slider17:0<0,127,0.01>-Elem 17
+slider18:0<0,127,0.01>-Elem 18
+slider19:0<0,127,0.01>-Elem 19
+slider20:0<0,127,0.01>-Elem 20
+slider21:0<0,127,0.01>-Elem 21
+slider22:0<0,127,0.01>-Elem 22
+slider23:0<0,127,0.01>-Elem 23
+slider24:0<0,127,0.01>-Elem 24
+slider25:0<0,127,0.01>-Elem 25
+slider26:0<0,127,0.01>-Elem 26
+slider27:0<0,127,0.01>-Elem 27
+slider28:0<0,127,0.01>-Elem 28
+slider29:0<0,127,0.01>-Elem 29
+slider30:0<0,127,0.01>-Elem 30
+slider31:0<0,127,0.01>-Elem 31
+slider32:0<0,127,0.01>-Elem 32
+slider33:0<0,127,0.01>-Elem 33
+slider34:0<0,127,0.01>-Elem 34
+slider35:0<0,127,0.01>-Elem 35
+slider36:0<0,127,0.01>-Elem 36
+slider37:0<0,127,0.01>-Elem 37
+slider38:0<0,127,0.01>-Elem 38
+slider39:0<0,127,0.01>-Elem 39
+slider40:0<0,127,0.01>-Elem 40
+slider41:0<0,127,0.01>-Elem 41
+slider42:0<0,127,0.01>-Elem 42
+slider43:0<0,127,0.01>-Elem 43
+slider44:0<0,127,0.01>-Elem 44
+slider45:0<0,127,0.01>-Elem 45
+slider46:0<0,127,0.01>-Elem 46
+slider47:0<0,127,0.01>-Elem 47
+slider48:0<0,127,0.01>-Elem 48
+slider49:0<0,127,0.01>-Elem 49
+slider50:0<0,127,0.01>-Elem 50
+import striptease_panel.jsfx-inc
+@init
+q44();
+@serialize
+q7d();
+@block
+q1g();
+@sample
+q58 ? q6y(spl0, spl1);
+@gfx 80 150
+q3d();
