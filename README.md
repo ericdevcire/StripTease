@@ -377,7 +377,10 @@ Loading it on any other track rebuilds all the bidirectional links automatically
 
 ### Included FX chains
 
-Nine ready-made chains are provided in `FXChains/`, each pairing a mapped panel with its plugin:
+Nine ready-made chains are provided in `FXChains/`, each pairing a mapped panel with a specific plugin. 
+
+> [!NOTE]
+> These chains are pre-linked with plugins I use regularly in my own workflow. Even if you don't own these exact plugins, you still get the huge benefit of a fully constructed, ready-to-use panel layout. You can simply load the chain, insert your own preferred plugin, and use the *Learn plugin parameter* function to re-link the existing knobs to your plugin of choice.
 
 | Chain | Plugin | Panel |
 | --- | --- | --- |
