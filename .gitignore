@@ -1,0 +1,9 @@
+/.claude/
+.DS_Store
+**/.DS_Store
+Forum_Options_List.md
+StripTease_User_Manual.odt
+WORK/
+/.github/
+# sortie de build (packaging)
+/packaging/out/
