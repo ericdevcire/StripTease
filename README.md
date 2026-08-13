@@ -10,8 +10,8 @@ Have fun !
 Eric
 
 ---
-**License**
-StripTease is freeware. You may use it for your personal workflow. Selling, commercially repackaging or redistributing it for profit — this version or any derivative — is prohibited.
+**License** 
+* StripTease is freeware. You may use it for your personal workflow. Selling, commercially repackaging or redistributing it for profit — this version or any derivative — is prohibited.
 ---
 
 ## 1. What's in the package
