@@ -13,14 +13,13 @@
         <link rel="website">https://github.com/ericdevcire/StripTease</link>
         <link rel="donation">https://ko-fi.com/ericire58504</link>
       </metadata>
-      <version name="1.0.0" author="Eric Avondo" time="2026-08-12T12:03:32Z">
-        <changelog><![CDATA[Premiere version Lite sous le nom StripTease. Renommage complet : les JSFX s'installent desormais dans Effects/StripTease/, les scripts dans Scripts/StripTease/, et la memoire partagee gmem change de nom. Rupture de compatibilite : un projet ou un preset cree avec une version 1.x ne retrouvera pas ses panneaux. Reinstaller, puis reinserer les panneaux.]]></changelog>
-        <source type="effect" file="striptease_panel.jsfx-inc">https://example.invalid/r/CHANGE-ME/v1.0.0/Effects/StripTease/striptease_panel.jsfx-inc</source>
-        <source type="effect" file="StripTease Panel 150 px">https://example.invalid/r/CHANGE-ME/v1.0.0/Effects/StripTease/StripTease%20Panel%20150%20px</source>
-        <source type="effect" file="StripTease Panel 300 px">https://example.invalid/r/CHANGE-ME/v1.0.0/Effects/StripTease/StripTease%20Panel%20300%20px</source>
-        <source type="script" main="main" file="StripTease System.lua">https://example.invalid/r/CHANGE-ME/v1.0.0/Scripts/StripTease/StripTease%20System.lua</source>
-        <source type="script" main="main" file="StripTease Check.lua">https://example.invalid/r/CHANGE-ME/v1.0.0/Scripts/StripTease/StripTease%20Check.lua</source>
-        <source type="effect" file="LICENSE.txt">https://example.invalid/r/CHANGE-ME/v1.0.0/Effects/StripTease/LICENSE.txt</source>
+      <version name="1.0.0" author="Eric Avondo" time="2026-08-13T14:25:42Z">
+        <source type="effect" file="striptease_panel.jsfx-inc">https://github.com/ericdevcire/StripTease/raw/main/v1.0.0/Effects/StripTease/striptease_panel.jsfx-inc</source>
+        <source type="effect" file="StripTease Panel 150 px">https://github.com/ericdevcire/StripTease/raw/main/v1.0.0/Effects/StripTease/StripTease%20Panel%20150%20px</source>
+        <source type="effect" file="StripTease Panel 300 px">https://github.com/ericdevcire/StripTease/raw/main/v1.0.0/Effects/StripTease/StripTease%20Panel%20300%20px</source>
+        <source type="script" main="main" file="StripTease System.lua">https://github.com/ericdevcire/StripTease/raw/main/v1.0.0/Scripts/StripTease/StripTease%20System.lua</source>
+        <source type="script" main="main" file="StripTease Check.lua">https://github.com/ericdevcire/StripTease/raw/main/v1.0.0/Scripts/StripTease/StripTease%20Check.lua</source>
+        <source type="effect" file="LICENSE.txt">https://github.com/ericdevcire/StripTease/raw/main/v1.0.0/Effects/StripTease/LICENSE.txt</source>
       </version>
     </reapack>
   </category>
