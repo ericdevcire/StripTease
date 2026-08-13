@@ -1,6 +1,8 @@
 /.claude/
 .DS_Store
 **/.DS_Store
+.gitignore
+.gitattributes
 Forum_Options_List.md
 StripTease_User_Manual.odt
 WORK/
