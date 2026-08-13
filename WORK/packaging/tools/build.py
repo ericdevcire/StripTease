@@ -1,12 +1,23 @@
 #!/usr/bin/env python3
 """Build StripTease : generation des panneaux, obfuscation, index ReaPack.
 
-    python3 packaging/tools/build.py --version 1.0.0
+    python3 WORK/packaging/tools/build.py --version 1.0.0
 
-Tout est lu depuis StripTease/ + FXChains/ (jamais modifies) et packaging/src/, tout
-est ecrit dans packaging/out/ :
-    packaging/out/index.xml       <- a deposer a la racine du dossier publie
-    packaging/out/v<version>/...  <- les fichiers obfusques, references par l'index
+Deux zones, une frontiere : WORK/ est l'atelier (gitignore), la racine du depot est
+la vitrine publique. Tout est lu depuis WORK/StripTease/ + WORK/FXChains/ (jamais
+modifies) et WORK/packaging/src/, et l'edition Pro est ecrite a plat a la racine :
+    <racine>/index.xml
+    <racine>/Effects/StripTease/...   <- les JSFX obfusques
+    <racine>/Scripts/StripTease/...   <- les scripts obfusques
+    <racine>/FXChains/...             <- les FX chains repointees
+
+C'est cette arborescence-la que ReaPack telecharge : les URL de l'index pointent
+directement sur les fichiers du depot (raw GitHub), sans dossier de version
+intermediaire. Une seule version est donc vivante a la fois -- les entrees plus
+anciennes de l'index resolvent vers les fichiers courants.
+
+L'edition Lite n'est pas publiee depuis ce depot : elle reste dans l'atelier, sous
+WORK/packaging/out-lite/v<version>/.
 
 Rien n'est jamais ecrit hors du depot : la copie vers les dossiers REAPER est faite
 a la main.
@@ -37,12 +48,13 @@ from xml.sax.saxutils import escape, quoteattr
 
 import lite
 
-TOOLS = Path(__file__).resolve().parent          # packaging/tools
-PKG = TOOLS.parent                               # packaging
-ROOT = PKG.parent                                # racine du depot
-SRC = ROOT / "StripTease"                          # sources d'origine, jamais modifiees
+TOOLS = Path(__file__).resolve().parent          # WORK/packaging/tools
+PKG = TOOLS.parent                               # WORK/packaging
+WORK = PKG.parent                                # WORK : l'atelier, gitignore
+REPO = WORK.parent                               # racine du depot, publiee telle quelle
+SRC = WORK / "StripTease"                        # sources d'origine, jamais modifiees
 PKG_SRC = PKG / "src"                            # sources ajoutees par le packaging
-FXCHAINS = ROOT / "FXChains"
+FXCHAINS = WORK / "FXChains"
 
 PANEL_HEIGHTS = [50, 100, 150, 200, 300, 400, 600]
 PANEL_TEMPLATE = SRC / "StripTease Panel 100 px"
@@ -91,6 +103,11 @@ DEFAULT_CONFIG = {
 # Les noms de fichiers et le desc: sont identiques dans les deux editions :
 # passer a la Pro est une copie de fichiers par-dessus, sans rien casser dans les
 # projets existants.
+#
+# "flat" dit ou atterrit la livraison. La Pro est publiee depuis la racine du
+# depot : ses fichiers y sont ecrits directement, et les URL de l'index n'ont pas
+# de segment de version. La Lite, qui n'est pas publiee ici, garde l'ancienne
+# forme -- un dossier v<version> par livraison, dans l'atelier.
 
 EDITIONS = {
     "pro": {
@@ -98,7 +115,8 @@ EDITIONS = {
         "gr_jsfx": True,
         "scripts": SCRIPTS,
         "fxchains": True,
-        "outdir": "out",
+        "outdir": REPO,
+        "flat": True,
         "versions": "versions.json",
         "namemap": "namemap.json",
         "transform": False,
@@ -109,7 +127,8 @@ EDITIONS = {
         "gr_jsfx": False,
         "scripts": ["StripTease System.lua", "StripTease Check.lua"],
         "fxchains": False,
-        "outdir": "out-lite",
+        "outdir": PKG / "out-lite",
+        "flat": False,
         "versions": "versions-lite.json",
         "namemap": "namemap-lite.json",
         "transform": True,
@@ -306,7 +325,11 @@ def build_index(cfg: dict, versions: list[dict], ed: dict) -> str:
     dirs = layout(cfg)
 
     for v in versions:
-        base = f"{cfg['base_url'].rstrip('/')}/v{v['version']}"
+        # En livraison plate, les fichiers sont a la racine du depot publie : c'est
+        # la ref git contenue dans base_url qui tient lieu de version.
+        base = cfg["base_url"].rstrip("/")
+        if not ed["flat"]:
+            base += f"/v{v['version']}"
 
         def url(name: str, kind: str = "effect") -> str:
             sub = urllib.parse.quote(dirs[kind])
@@ -367,7 +390,7 @@ def main() -> int:
         print(f"Config par defaut ecrite dans {args.config} - a completer (base_url !).")
     ed = EDITIONS[args.edition]
     if args.outdir is None:
-        args.outdir = PKG / ed["outdir"]
+        args.outdir = ed["outdir"]
 
     cfg = {**DEFAULT_CONFIG, **json.loads(args.config.read_text(encoding="utf-8")), **ed["cfg"]}
     if args.category:
