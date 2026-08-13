@@ -81,7 +81,7 @@ DEFAULT_CONFIG = {
     "index_name": "StripTease",
     "category": ".",
     "author": "Eric Avondo",
-    "base_url": "https://example.invalid/r/CHANGE-ME",
+    "base_url": "https://github.com/ericdevcire/StripTease/raw/main",
     "website": "https://github.com/ericdevcire/StripTease",
     "donation": "https://ko-fi.com/ericire58504",
     "about": (
@@ -377,7 +377,8 @@ def main() -> int:
     ap.add_argument("--edition", choices=sorted(EDITIONS), default="pro",
                     help="pro (defaut) ou lite : voir EDITIONS et lite.py")
     ap.add_argument("--outdir", type=Path, default=None,
-                    help="defaut: packaging/out pour la Pro, packaging/out-lite pour la Lite")
+                    help="defaut: la racine du depot pour la Pro, "
+                         "WORK/packaging/out-lite pour la Lite")
     ap.add_argument("--config", type=Path, default=TOOLS / "build_config.json")
     ap.add_argument("--category", help="surcharge la categorie ReaPack (defaut: '.')")
     ap.add_argument("--index-name", help="surcharge le nom du depot (utile pour un build de test isole)")
@@ -400,21 +401,24 @@ def main() -> int:
     if args.index_name:
         cfg["index_name"] = args.index_name
 
-    stage = args.outdir / "_stage"
-    payload = args.outdir / f"v{args.version}"
-    for d in (stage, payload):
-        if d.exists():
-            shutil.rmtree(d)
-    payload.mkdir(parents=True)
+    stage = PKG / "_stage"
+    payload = args.outdir if ed["flat"] else args.outdir / f"v{args.version}"
 
     dirs = layout(cfg)
     d_fx    = payload / dirs["effect"]
     d_lua   = payload / dirs["script"]
     d_chain = payload / dirs["data"]
-    for d in (d_fx, d_lua):
-        d.mkdir(parents=True, exist_ok=True)
-    if ed["fxchains"]:
-        d_chain.mkdir(parents=True, exist_ok=True)
+
+    # On ne vide jamais args.outdir en bloc : en livraison plate, c'est la racine du
+    # depot, ou vivent aussi le README, la licence et l'atelier. Seuls les trois
+    # dossiers que le build regenere sont effaces.
+    if stage.exists():
+        shutil.rmtree(stage)
+    for d in (d_fx, d_lua) + ((d_chain,) if ed["fxchains"] else ()):
+        if d.exists():
+            shutil.rmtree(d)
+        d.mkdir(parents=True)
+    payload.mkdir(parents=True, exist_ok=True)
 
     print("1/7  Verification de la carte gmem")
     run([sys.executable, str(TOOLS / "check_gmem.py")])
@@ -516,9 +520,12 @@ def main() -> int:
     (args.outdir / "index.xml").write_text(build_index(cfg, history, ed), encoding="utf-8")
     shutil.rmtree(stage, ignore_errors=True)
 
-    n = sum(1 for _ in payload.rglob("*") if _.is_file())
+    # On compte les dossiers livres, pas payload.rglob : en livraison plate,
+    # payload est la racine du depot et contient aussi l'atelier et le .git.
+    delivered = [payload / sub for sub in dirs.values()]
+    n = sum(1 for d in delivered if d.exists() for f in d.rglob("*") if f.is_file())
     print(f"\nOK - edition {args.edition} - {n} fichiers dans {payload}")
-    for kind, sub in dirs.items():
+    for sub in dirs.values():
         d = payload / sub
         if d.exists():
             print(f"       {sub}/  ({len(list(d.iterdir()))} fichiers)")

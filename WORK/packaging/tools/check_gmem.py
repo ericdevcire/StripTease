@@ -11,7 +11,7 @@ Ce script compare chaque constante aux valeurs de gmem_map.json et verifie
 qu'aucun bloc n'en chevauche un autre. Il est appele par build.py, et refuse le
 build en cas d'ecart.
 
-    python3 packaging/tools/check_gmem.py [--map gmem_map.json] [--src StripTease]
+    python3 WORK/packaging/tools/check_gmem.py [--map gmem_map.json] [--src StripTease]
 """
 
 from __future__ import annotations
@@ -22,8 +22,8 @@ import re
 import sys
 from pathlib import Path
 
-TOOLS = Path(__file__).resolve().parent
-ROOT = TOOLS.parent.parent
+TOOLS = Path(__file__).resolve().parent          # WORK/packaging/tools
+ROOT = TOOLS.parent.parent                       # WORK : les sources vivent la
 
 
 def find_const(text: str, ident: str, is_lua: bool) -> list[int]:
