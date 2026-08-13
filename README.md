@@ -48,7 +48,7 @@ Run it once; it stays in the background and handles everything the JSFX cannot d
 
 With SWS installed you can attach it to the *Global Startup Action* so it launches with REAPER.
 
-> Several features are simply inactive while the script is not running: renaming, custom palette colors, GR metering, learning and value pop-ups. If a menu entry seems to do nothing, check the script first.
+> Several features are simply inactive while the script is not running: renaming, custom palette colors, GR metering, learning, direct links and value pop-ups. If a menu entry seems to do nothing, check the script first.
 
 ### StripTease Check.lua
 
