@@ -4,7 +4,10 @@ Welcome to the comprehensive guide for the StripTease system in REAPER. StripTea
 
 This document covers the package content, the setup, the exhaustive list of every menu option, every mouse and keyboard gesture, the Direct Link workflow, and the preset / recipe system.
 
+Feel free to support this project: if you like and find StripTease useful, you can buy me a coffee here: https://ko-fi.com/ericire58504
 
+Have fun !
+Eric
 
 ## 1. What's in the package
 
