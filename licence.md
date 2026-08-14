@@ -2,7 +2,7 @@
 
 **STRIPTEASE**
 
-***Version**: 1.0  
+**Version**: 1.0  
 **Developer** : Eric Avondo  
 
 ## 1. Grant of License (Personal Use)
