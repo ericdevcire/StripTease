@@ -7,7 +7,8 @@ This document covers the package content, the setup, the exhaustive list of ever
 
 
 SUPPORT
-Feel free to support this project! if you like and find StripTease useful, you can buy me a coffee here:
+
+Feel free to help this project! if you like and find StripTease useful, you can buy me a coffee here:
 
 https://ko-fi.com/ericire58504
 
