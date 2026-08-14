@@ -1,6 +1,8 @@
 # End User License Agreement - Freeware (Beta Version)
 
+STRIPTEASE
 Version 1.0
+Developer : Eric Avondo
 
 ## 1. Grant of License (Personal Use)
 The author hereby grants you a personal, non-exclusive, and non-transferable right to use the Software. This use is strictly limited to personal and private purposes.
