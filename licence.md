@@ -1,6 +1,7 @@
 # End User License Agreement - Freeware (Beta Version)
 
 **STRIPTEASE**
+
 ***Version**: 1.0
 **Developer** : Eric Avondo
 
