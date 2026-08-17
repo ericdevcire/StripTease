@@ -1,0 +1,3080 @@
+desc:StripTease Panel engine
+// ==========================================================================
+// StripTease Panel engine
+// Version: 1.0.0
+// Developer: Eric Avondo
+//
+// Freeware - personal use. Resale or redistribution for profit is
+// prohibited. See LICENSE.txt.
+// ==========================================================================
+@init
+function q2c(z0)
+local(z1)
+(
+z1 = -z0 - 1;
+gfx_r = floor(z1 / 65536);
+gfx_g = floor((z1 - gfx_r * 65536) / 256);
+gfx_b = z1 - gfx_r * 65536 - gfx_g * 256;
+gfx_r /= 255; gfx_g /= 255; gfx_b /= 255;
+);
+function q7c(z0, z1)
+(
+z0 < 0 ? q2c(z0) :
+z0 ==  0 ? ( gfx_r = 0.92; gfx_g = 0.92; gfx_b = 0.90; ) :
+z0 ==  1 ? ( gfx_r = 0.12; gfx_g = 0.12; gfx_b = 0.12; ) :
+z0 ==  2 ? ( gfx_r = 0.28; gfx_g = 0.52; gfx_b = 0.31; ) :
+z0 ==  3 ? ( gfx_r = 0.78; gfx_g = 0.22; gfx_b = 0.18; ) :
+z0 ==  4 ? ( gfx_r = 0.34; gfx_g = 0.52; gfx_b = 0.70; ) :
+z0 ==  5 ? ( gfx_r = 0.93; gfx_g = 0.82; gfx_b = 0.15; ) :
+z0 ==  6 ? ( gfx_r = 0.95; gfx_g = 0.52; gfx_b = 0.09; ) :
+z0 ==  8 ? ( gfx_r = 0.88; gfx_g = 0.38; gfx_b = 0.60; ) :
+z0 ==  9 ? ( gfx_r = 0.66; gfx_g = 0.67; gfx_b = 0.67; ) :
+z0 == 10 ? ( gfx_r = 0.22; gfx_g = 0.23; gfx_b = 0.23; ) :
+( gfx_r = 0.48; gfx_g = 0.50; gfx_b = 0.50; );
+gfx_r *= z1; gfx_g *= z1; gfx_b *= z1;
+);
+function q52(z0)
+local(z1, z2, z3, z4)
+(
+z1 = -z0 - 1;
+z2 = floor(z1 / 65536);
+z3 = floor((z1 - z2 * 65536) / 256);
+z4 = z1 - z2 * 65536 - z3 * 256;
+(0.299 * z2 + 0.587 * z3 + 0.114 * z4) / 255;
+);
+function q48(z0)
+(
+z0 < 0 ? ( q52(z0) > 0.50 )
+: ( z0 == 0 || z0 == 5 || z0 == 6 || z0 == 9 )
+);
+function q6k(z0) ( ( z0 == 1 || z0 == 10 ) ? 9 : z0 );
+function q7b(z0)
+(
+z0 < 0 ? q2c(z0) :
+z0 ==  0 ? ( gfx_r = 0.880; gfx_g = 0.886; gfx_b = 0.892; ) :
+z0 ==  1 ? ( gfx_r = 0.086; gfx_g = 0.092; gfx_b = 0.104; ) :
+z0 ==  2 ? ( gfx_r = 0.225; gfx_g = 0.410; gfx_b = 0.315; ) :
+z0 ==  3 ? ( gfx_r = 0.480; gfx_g = 0.235; gfx_b = 0.240; ) :
+z0 ==  4 ? ( gfx_r = 0.235; gfx_g = 0.370; gfx_b = 0.560; ) :
+z0 ==  5 ? ( gfx_r = 0.545; gfx_g = 0.465; gfx_b = 0.195; ) :
+z0 ==  6 ? ( gfx_r = 0.560; gfx_g = 0.345; gfx_b = 0.170; ) :
+z0 ==  8 ? ( gfx_r = 0.495; gfx_g = 0.245; gfx_b = 0.400; ) :
+z0 ==  9 ? ( gfx_r = 0.435; gfx_g = 0.450; gfx_b = 0.466; ) :
+z0 == 10 ? ( gfx_r = 0.190; gfx_g = 0.201; gfx_b = 0.219; ) :
+( gfx_r = 0.298; gfx_g = 0.313; gfx_b = 0.332; );
+q1e = (0.299 * gfx_r + 0.587 * gfx_g + 0.114 * gfx_b) > 0.50;
+);
+function q81(z0) ( q7[z0 * 8] );
+function q47(z0)
+( q81(z0) == 1 || q81(z0) == 2 || q81(z0) == 5 );
+function q5p(z0)
+( q81(z0) == 3 || q81(z0) == 4 || q81(z0) == 6 || q81(z0) == 7 );
+function q5m(z0) ( 900 + z0 );
+function q5n(z0) ( 950 + z0 );
+function q4u() ( 1000 );
+function q51() ( 1648 );
+function q4y(z0)        local(z1) ( z1 = q51(); z1[z0]; );
+function q50(z0, z1) local(z2) ( z2 = q51(); z2[z0] = max(0, z1 + 1); );
+function q4z(z0)  local(z1) ( z1 = q51(); z1[z0] = 0; );
+function q4s()
+local(z0, z1)
+(
+z0 = 0; z1 = 0;
+loop(64, q4y(z0) > 0 ? ( z1 += 1 ); z0 += 1;);
+z1;
+);
+function q4w() ( strlen(q4u()) > 0 && q4s() > 0 );
+function q4t()
+local(z0)
+(
+strcpy(q4u(), "");
+q4v = 0;
+z0 = 0; loop(64, q4z(z0); z0 += 1;);
+q4q = 1;
+q97 = 1;
+);
+function qa6(z0)
+( gmem[qf + max(0, min(255, q7z + 1)) * 64 + z0] );
+function q4x(z0) ( qa6(z0) > 0 );
+function q9z(z0)
+local(z1) ( z1 = floor(qa6(z0) + 0.5) - 1; z1 >= 2 ? min(513, z1) : 0; );
+function qa1(z0, z1)
+local(z2)
+(
+z2 = q9z(z0);
+z2 >= 2 ? max(0, min(z2 - 1, floor(z1 * (z2 - 1) / 127 + 0.5))) * 127 / (z2 - 1) : z1;
+);
+function q96() ( qt + max(0, min(255, q7z + 1)) * 512 );
+function q98(z0, z1)
+local(z2)
+(
+z1 = max(0, min(60, z1));
+strcpy(#q7u, "");
+z2 = 0;
+loop(z1,
+sprintf(#q7t, "%c", gmem[z0 + z2]);
+strcat(#q7u, #q7t);
+z2 += 1;
+);
+z1;
+);
+function q9c()
+local(z0, z1, z2, z3)
+(
+z0 = q96();
+z2 = q4u();
+z3 = min(60, strlen(z2));
+gmem[z0 + 1] = q4v;
+gmem[z0 + 2] = z3;
+z1 = 0;
+loop(z3, gmem[z0 + 3 + z1] = str_getchar(z2, z1); z1 += 1;);
+z1 = 0;
+loop(qi, gmem[z0 + 64 + z1] = q4y(z1); z1 += 1;);
+q9d += 1;
+gmem[z0] = q9d;
+);
+function q99(z0)
+local(z1, z2, z3)
+(
+z1 = q96();
+z2 = q98(z1 + 133, gmem[z1 + 132]);
+q4q = 0;
+z2 <= 0 ? ( q4z(z0) ) : (
+!q4w() ? (
+strcpy(q4u(), #q7u);
+q4v = gmem[z1 + 130];
+z3 = 1;
+) : (
+z3 = strcmp(q4u(), #q7u) == 0 && q4v == gmem[z1 + 130];
+);
+z3 ? q50(z0, gmem[z1 + 131]) : q4z(z0);
+);
+q97 = 1;
+);
+function q95() ( gmem[q96() + 258] > 0 );
+function q4r()
+(
+q4q        = 0;
+q9b = -1;
+);
+function q9a()
+local(z0, z1, z2, z3, z4, z5, z6)
+(
+z0  = q96();
+z1 = gmem[z0 + 256];
+( z1 != 0 && z1 != q9b ) ? (
+q9b = z1;
+z6 = 0;
+z2 = q98(z0 + 259, gmem[z0 + 258]);
+z2 > 0 ? (
+z5 = 0;
+!q4w() ? (
+!q4q ? (
+strcpy(q4u(), #q7u);
+q4v = gmem[z0 + 257];
+z5  = 1;
+z6 = 1;
+);
+) : (
+z5 = strcmp(q4u(), #q7u) == 0 && q4v == gmem[z0 + 257];
+);
+z5 ? (
+z3 = 0;
+loop(qi,
+z4 = gmem[z0 + 320 + z3];
+( z4 > 0 && q4y(z3) <= 0 ) ? ( q50(z3, z4 - 1); z6 = 1; );
+z3 += 1;
+);
+);
+);
+z6 ? ( q97 = 1 );
+);
+);
+function q4n(z0, z1)
+(
+q4g   = z0;
+q4h  = z1;
+q4o    = time_precise();
+q4m = q4o;
+q4l = gmem[qh + 5];
+q4i    = 0;
+);
+function q4f()
+(
+q4g >= 0 ? ( q4g = -1; gmem[qh] = -1; );
+);
+function qv(z0) ( q7 + z0 * 8 );
+function q83(z0) ( q7[z0 * 8] > 0 );
+function q37(z0, z1) ( q7[z0 * 8 + 7] & z1 );
+function q7w(z0, z1)
+( q7[z0 * 8 + 7] = q37(z0, z1) ? q7[z0 * 8 + 7] - z1
+: q7[z0 * 8 + 7] + z1; );
+function q84(z0) ( slider(z0 + 1) );
+function q7d(z0, z1)
+(
+q81(z0) == 1 ? ( z1 = qa1(z0, z1) );
+slider(z0 + 1) = max(0, min(127, z1));
+q43 ? 0 : slider_automate(2 ^ z0);
+);
+function q5x(z0) ( q84(z0) / 127 );
+function q85(z0) ( q5x(z0) * 127 );
+function qa0(z0)
+local(z1) ( z1 = q9z(z0); z1 >= 2 ? floor(q84(z0) * (z1 - 1) / 127 + 0.5) : 0; );
+function qa2(z0, z1)
+local(z2) ( z2 = q9z(z0); z2 >= 2 ? max(0, min(z2 - 1, z1)) * 127 / (z2 - 1) : 0; );
+function q4a(z0) ( z0 ? 0.06336 : 0.19008 );
+function q62(z0)    ( 2 + floor((q7[z0 * 8 + 7] & 112) / 16) );
+function q66(z0) ( q37(z0, 8) );
+function q64(z0, z1)
+( q7[z0 * 8 + 7] = q7[z0 * 8 + 7] - (q7[z0 * 8 + 7] & 112)
++ (max(2, min(6, z1)) - 2) * 16; );
+function q63(z0)
+local(z1) ( z1 = q62(z0); floor(q84(z0) * (z1 - 1) / 127 + 0.5); );
+function q65(z0, z1)
+local(z2) ( z2 = q62(z0); floor(z1 * 127 / (z2 - 1) + 0.5); );
+function qa5(z0) ( floor((q7[z0 * 8 + 7] & 3072) / 1024) );
+function qa4(z0, z1)
+( q7[z0 * 8 + 7] = q7[z0 * 8 + 7] - (q7[z0 * 8 + 7] & 3072)
++ max(0, min(3, floor(z1 + 0.5))) * 1024; );
+function qai() ( qa8 >= 2 );
+function qa9(z0) ( !qai() || qa5(z0) == qac );
+function q9y() ( qai() ? qac : -1 );
+function qag(z0) ( 1010 + max(0, min(3, z0)) );
+function qaf(z0)
+(
+strlen(qag(z0)) ? strcpy(#q7u, qag(z0))
+: sprintf(#q7u, "%d", z0 + 1);
+);
+function qae() ( qai() ? max(17, floor(34 * q82 + 0.5)) : 0 );
+function q9l() ( (gfx_ext_flags & 1) ? 1 : 0 );
+function q9m(z0) ( q9k + z0 * 16 );
+function q9n(z0)
+local(z1)
+(
+z1 = q9m(z0);
+q4c       = z1[0];
+q3z          = z1[1];
+q2i       = z1[2];
+q2k      = z1[3];
+q6u        = z1[4];
+q6b        = z1[5];
+q6c          = z1[6];
+q69         = z1[7];
+q68     = z1[8];
+q6a       = z1[9];
+q67       = z1[10];
+q4e   = z1[11];
+q4d = z1[12];
+qb5       = z1[13];
+qb7         = z1[14];
+qb8         = z1[15];
+);
+function q9p(z0)
+local(z1)
+(
+z1 = q9m(z0);
+z1[0]  = q4c;
+z1[1]  = q3z;
+z1[2]  = q2i;
+z1[3]  = q2k;
+z1[4]  = q6u;
+z1[5]  = q6b;
+z1[6]  = q6c;
+z1[7]  = q69;
+z1[8]  = q68;
+z1[9]  = q6a;
+z1[10] = q67;
+z1[11] = q4e;
+z1[12] = q4d;
+z1[13] = qb5;
+z1[14] = qb7;
+z1[15] = qb8;
+);
+function q9o()
+local(z0, z1)
+(
+memset(q9k, 0, 32);
+z0 = 0;
+loop(2,
+z1 = q9m(z0);
+z1[1]  = -1;
+z1[2]  = -1;
+z1[12] = -1;
+z1[13] = -1;
+z0 += 1;
+);
+);
+function q1w() ( q82 = max(1, gfx_ext_retina) * 0.5 );
+function q9s() ( q9r > 0 ? q9r : gfx_w );
+function q20() ( min(q9s() / max(1, q27), q28) );
+function q2a() ( q20() * max(1, q27) );
+function q4b()  ( q7e ? 22 * q82 : 0 );
+function q5y(z0)   ( max(4, q7[z0 * 8 + 5]) * q82 );
+function q61(z0) ( q5y(z0) );
+function q60(z0) ( q5y(z0) * 0.75 );
+function q94(z0) ( q5y(z0) * 7.5 );
+function q8f(z0) ( q5y(z0) * 5.1 );
+function q8e(z0) ( q8f(z0) * 0.20 );
+function q8z(z0)   ( q8e(z0) * 0.32 );
+function q91(z0)   ( q8f(z0) + q8e(z0) );
+function q1c(z0) ( q37(z0, 8) );
+function q1b(z0)    ( max(1, 6 * q82) );
+function q15(z0)   ( q5y(z0) * 0.88 );
+function q16(z0)  ( q5y(z0) * 0.40 );
+function q19(z0)  ( q5y(z0) * 6 );
+function q18(z0)
+( q1c(z0) ? max(q1b(z0) * 0.5, 5 * q82) : q19(z0) * 0.5 );
+function q17(z0)
+( q1c(z0) ? q19(z0) * 0.5 : max(q1b(z0) * 0.5, 5 * q82) );
+function q6m() ( q7f ? 9 : 3 );
+function q7x() ( 5 * q82 + qae() );
+function qah() ( q9s() / max(1, qa8) );
+function qad(z0, z1)
+( ( qai() && z1 >= 0 && z1 < qae() && z0 >= 0 && z0 < q9s() )
+? max(0, min(qa8 - 1, floor(z0 / qah()))) : -1 );
+function q42() ( q20() * 0.125 );
+function q3w() ( q6r * 0.125 );
+function q54() ( max(0, 8 * q27 - 8) );
+function q55() ( 252 );
+function q30(z0)
+local(z1)
+(
+q81(z0) == 3 || q81(z0) == 4 ? 0 : (
+z1 = max(4, q7[z0 * 8 + 5]);
+q81(z0) == 5 ? ( z1 * 0.75 * (q66(z0) ? q62(z0) : 1) + 6 ) :
+q81(z0) == 6 || q81(z0) == 7 ? 12 :
+q81(z0) == 2 ? 2 * (z1 * 0.62 + 3) : 2 * (z1 + q6m() + 1);
+);
+);
+function q31(z0)
+local(z1)
+(
+q81(z0) == 3 || q81(z0) == 4 ? 0 : (
+z1 = max(4, q7[z0 * 8 + 5]);
+q81(z0) == 5 ? ( z1 * (q66(z0) ? 1 : q62(z0)) ) :
+q81(z0) == 6 ? ( z1 * 7.5 ) :
+q81(z0) == 7 ? ( q1c(z0) ? 12 : z1 * 6 ) :
+q81(z0) == 2 ? 2 * z1 :
+2 * (z1 + q6m());
+);
+);
+function qbe()
+local(z0, z1, z2)
+(
+z1 = 18; z2 = 40; z0 = 0;
+loop(qi,
+q83(z0) ? (
+z1 = max(z1, q30(z0));
+z2 = max(z2, q31(z0) * 1.25 + 16);
+);
+z0 += 1;
+);
+qbf = z1; qbg = z2;
+qbi = 1;
+);
+function q1v()
+( qbi = 1;
+q6r = ceil(max(18, qbf) + (q7e ? 22 : 0) + 3) * q82; );
+function q1u()
+( q28 = max(40, qbg) * q82 );
+function q38(z0)
+(
+q81(z0) == 3 || q81(z0) == 4 ? 2 * q3w() :
+q81(z0) == 7 ?
+max(q6r, (q6r + q4b()) * 0.5 + q17(z0)) :
+q81(z0) == 6 ?
+max(q6r, (q6r + q4b()) * 0.5 + q91(z0) * 0.5) :
+max(q6r, (q6r - q4b()) * 0.5
++ q30(z0) * 0.5 * q82 + q4b())
+);
+function q29()
+local(z0, z1)
+(
+qbi ? (
+z1 = 0; z0 = 0;
+loop(qi,
+( q83(z0) && qa9(z0) ) ?
+( z1 = max(z1, q7[z0 * 8 + 4] * q3w() + q38(z0)) );
+z0 += 1;
+);
+qbh = q7x() + max(q6r, z1);
+qbi = 0;
+);
+qbh;
+);
+function q56() ( max(0, q29() - gfx_h) );
+function q7k()
+( max(14 * q82, gfx_h * gfx_h / max(1, q29())) );
+function q7y() ( max(1, gfx_h - q7k()) );
+function q7l()
+local(z0)
+(
+z0 = q56();
+z0 > 0 ? q7y() * q6v / z0 : 0;
+);
+function q6w(z0) ( z0 / q7y() * q56() );
+function q75() ( max(1500 * q82, q6r * 30) );
+function q73() ( 0.30 );
+function q74() ( 0.20 );
+function q3u(z0) ( qal + (z0 - 1) * 16 );
+function q7h(z0)
+( q3s ? gmem[q3u(q3s) + z0] : qg[z0] );
+function q7i(z0, z1)
+( q3s ? ( gmem[q3u(q3s) + z0] = z1 ) : ( qg[z0] = z1 ); );
+function q7a(z0)
+(
+z0 != q3s ? (
+q3s = z0;
+!q3s ? ( memset(qg, 0, 16) );
+qam = q7h(13);
+q3a = 0;
+);
+);
+function q7n() ( 0.012 );
+function q7m() ( 0.060 );
+function q3b()
+local(z0, z1, z2, z3)
+(
+z0 = time_precise();
+z2 = q39 > 0 ? z0 - q39 : 0;
+q39 = z0;
+z1 = q7h(6);
+( z1 <= 0 || z1 > z0 || z0 - z1 > 0.25 ) ? (
+z1 = z0;
+q7i(6, z1);
+q7i(7, q7n());
+) : (
+z3 = q7h(7);
+( z2 > 0 && z2 < 0.25 ) ? ( z3 = max(z2, z3 * 0.95) );
+z3 = max(q7n(), min(q7m(), z3));
+q7i(7, z3);
+( z1 == q3a && z0 - z1 >= z3 * 0.90 ) ? (
+z1 = z0;
+q7i(6, z1);
+);
+);
+q3a = z1;
+q7v = z1;
+);
+function q3v()
+local(z0, z1, z2, z3, z4, z5, z6)
+(
+q3b();
+q7h(0) > 0 ? (
+z0  = q7v - q7h(3);
+z1 = q7h(4); z2 = q7h(5);
+z3 = z1 + z2;
+( z3 <= 0 || z0 >= z3 ) ? ( q6v = q7h(2) ) : (
+z0 < 0 ? ( z0 = 0 );
+z4 = q7h(2) - q7h(1);
+z5 = z4 / (z1 + z2 * 0.5);
+z0 <= z1 ? ( q6v = q7h(1) + z5 * z0 ) : (
+z6 = z0 - z1;
+q6v = q7h(1) + z5 * z1 + z5 * z6 - z5 * z6 * z6 / (2 * z2);
+);
+);
+);
+q70 = q6v;
+q6v = max(0, min(q56(), q6v));
+q6v = floor(q6v + 0.5);
+);
+function q72()
+( max(0, min(q56(), q7h(0) > 0 ? q7h(2) : q6v)) );
+function q6z()
+( q7h(0) > 0 &&
+q7v - q7h(3) < q7h(4) + q7h(5) );
+function q71()
+(
+q6z() ? (
+q7i(1, q70);
+q7i(2, q70);
+q7i(3, q7v);
+q7i(4, 0);
+q7i(5, 0);
+q7i(0, q7h(0) + 1);
+);
+);
+function qak(z0)
+(
+z0 = max(0, min(q56(), z0));
+q6v     = z0;
+q70 = z0;
+q7i(1, z0);
+q7i(2, z0);
+q7i(3, q7v);
+q7i(4, 0);
+q7i(5, 0);
+q7i(0, q7h(0) + 1);
+);
+function q6y(z0)
+local(z1, z2, z3, z4)
+(
+z0  = max(0, min(q56(), z0));
+z1 = abs(z0 - q6v);
+z2 = q75();
+z3 = q73();
+z1 <= z2 * z3 * 0.5 ? (
+z4 = 0;
+z3 = max(q74(), z1 > 0 ? 2 * z1 / z2 : 0);
+) : (
+z4 = (z1 - z2 * z3 * 0.5) / z2;
+);
+q7i(1, q6v);
+q7i(2, z0);
+q7i(3, q7v);
+q7i(4, z4);
+q7i(5, z3);
+q7i(0, q7h(0) + 1);
+);
+function q2j() ( 0.05 );
+function q6x(z0)
+(
+z0 = max(0, min(q56(), z0));
+q7i(1, q6v);
+q7i(2, z0);
+q7i(3, q7v);
+q7i(4, 0);
+q7i(5, q2j());
+q7i(0, q7h(0) + 1);
+);
+function q2d(z0) ( (q7[z0 * 8 + 3] + 4) * q42() );
+function q6q(z0) ( q7x() + q7[z0 * 8 + 4] * q3w() - q6v );
+function q2e(z0) ( q6q(z0) + (q6r - q4b()) * 0.5 );
+function q76(z0) ( q6q(z0) + 2 * q3w() );
+function q25(z0)
+( max(0, min(q54(), floor(z0 / q42() - 3.5))) );
+function q6o(z0)
+( max(0, min(q55(), floor((z0 + q6v - q7x()) / q3w() - 3.5))) );
+function q6p(z0)
+( max(0, min(q55(), floor((z0 + q6v - q7x()) / q3w() - 1.5))) );
+function q1z(z0, z1, z2, z3)
+local(z4, z5)
+(
+z4 = 0; z5 = -1;
+loop(qi,
+( z5 < 0 && z4 != z2 && q83(z4) &&
+( z3 < 0 || qa5(z4) == z3 ) &&
+q7[z4 * 8 + 3] == z0 && q7[z4 * 8 + 4] == z1 ) ? ( z5 = z4 );
+z4 += 1;
+);
+z5;
+);
+function q36(z0)
+local(z1, z2, z3)
+(
+z3 = 0; z2 = 0;
+loop(32,
+z1 = 0;
+loop(q27,
+(!z3 && q1z(z1 * 8, z2 * 8, -1, z0) < 0) ? (
+z3 = 1; q34 = z1 * 8; q35 = z2 * 8;
+);
+z1 += 1;
+);
+z2 += 1;
+);
+!z3 ? ( q34 = 0; q35 = 0; z3 = 1; );
+z3;
+);
+function q13(z0, z1)
+(
+qz    = q25(z0);
+q11    = q6o(z1);
+q12 = q6p(z1);
+q10     = 1;
+);
+function q14(z0)
+local(z1)
+(
+z1 = z0 == 3 ? q12 : q11;
+( q10 && q1z(qz, z1, -1, q9y()) < 0 ) ? (
+q34 = qz; q35 = z1;
+) : (
+q36(q9y());
+);
+q10 = 0;
+);
+function q6d()
+local(z0, z1, z2, z3)
+(
+z0 = 0;
+loop(qi,
+q83(z0) ? (
+z1 = qv(z0);
+z1[3] = max(0, min(q54(), floor(z1[3] + 0.5)));
+z1[4] = max(0, min(q55(), floor(z1[4] + 0.5)));
+);
+z0 += 1;
+);
+z0 = 0;
+loop(qi,
+q83(z0) ? (
+z1 = qv(z0);
+z3 = qai() ? qa5(z0) : -1;
+z2  = q1z(z1[3], z1[4], z0, z3);
+( z2 >= 0 && z2 < z0 && q36(z3) ) ? (
+z1[3] = q34; z1[4] = q35;
+);
+);
+z0 += 1;
+);
+qbi = 1;
+);
+function qab(z0)
+local(z1)
+(
+qai() ? (
+z1 = max(0, min(qa8 - 1, floor(z0 + 0.5)));
+z1 != qac ? (
+q7i(8 + qac, q72());
+qac = z1;
+qbi = 1;
+q7i(12, z1);
+q7i(13, q7h(13) + 1);
+qam = q7h(13);
+qak(q7h(8 + z1));
+);
+);
+);
+function qan()
+local(z0)
+(
+qai() ? (
+z0 = q7h(13);
+!qao ? ( qao = 1; qam = z0; );
+z0 != qam ? (
+qam = z0;
+qac = max(0, min(qa8 - 1, floor(q7h(12) + 0.5)));
+qbi = 1;
+);
+);
+);
+function qaa(z0)
+local(z1, z2)
+(
+qa8 = z0 >= 2 ? min(q9u, floor(z0 + 0.5)) : 0;
+z2     = qai() ? qa8 - 1 : 0;
+z1 = 0;
+loop(qi,
+( q83(z1) && qa5(z1) > z2 ) ? qa4(z1, z2);
+z1 += 1;
+);
+qac = max(0, min(z2, qac));
+z1 = 0;
+loop(q9u, q7i(8 + z1, 0); z1 += 1;);
+q6d();
+q71();
+);
+function q3d()
+local(z0, z1)
+(
+z0 = 0; z1 = -1;
+loop(qi,
+(z1 < 0 && !q83(z0)) ? ( z1 = z0 );
+z0 += 1;
+);
+z1;
+);
+function q2b()
+local(z0, z1)
+(
+z0 = 0; z1 = 0;
+loop(q9f,
+q83(z0) ? ( z1 += 1 );
+z0 += 1;
+);
+z1;
+);
+function q9x()
+local(z0, z1)
+(
+z0 = 0; z1 = 0;
+loop(q9f,
+( q83(z0) && qa9(z0) ) ? ( z1 += 1 );
+z0 += 1;
+);
+z1;
+);
+function qb4(z0) ( qau[z0] );
+function qbb(z0) ( qau[z0] = qau[z0] ? 0 : 1 );
+function qb6() ( memset(qau, 0, qi) );
+function qb9()
+local(z0, z1)
+(
+z0 = 0; z1 = 0;
+loop(qi, ( q83(z0) && qau[z0] ) ? ( z1 += 1 ); z0 += 1;);
+z1;
+);
+function qba() ( 3 * q82 );
+function qbc(z0, z1)
+local(z2, z3, z4, z5, z6)
+(
+z6 = 1; z2 = 0;
+loop(qi,
+( z6 && q83(z2) && qau[z2] && qa9(z2) ) ? (
+z4 = q7[z2 * 8 + 3] + z0;
+z5 = q7[z2 * 8 + 4] + z1;
+( z4 < 0 || z4 > q54() || z5 < 0 || z5 > q55() ) ? ( z6 = 0 ) : (
+z3 = q1z(z4, z5, z2, q9y());
+( z3 >= 0 && !( qau[z3] && qa9(z3) ) ) ? ( z6 = 0 );
+);
+);
+z2 += 1;
+);
+z6;
+);
+function qbd(z0, z1)
+local(z2)
+(
+z2 = 0;
+loop(qi,
+( q83(z2) && qau[z2] && qa9(z2) ) ? (
+q7[z2 * 8 + 3] += z0;
+q7[z2 * 8 + 4] += z1;
+);
+z2 += 1;
+);
+);
+function q6e() ( slider_show(qbj, 0) );
+function q79(z0)
+( sprintf(#q5o, "CC %d", q7[z0 * 8 + 1]); strcpy(q5m(z0), #q5o); );
+function q46(z0)
+( sprintf(#q5o, "CC %d", q7[z0 * 8 + 1]); strcmp(q5m(z0), #q5o) == 0; );
+function q3c()
+local(z0, z1, z2, z3)
+(
+z0 = 0; z3 = 0;
+loop(128,
+!z3 ? (
+z2 = 0; z1 = 0;
+loop(qi,
+( !z2 && q47(z1) && q7[z1 * 8 + 1] == z0 ) ? ( z2 = 1 );
+z1 += 1;
+);
+z2 ? ( z0 += 1 ) : ( z3 = 1 );
+);
+);
+min(127, z0);
+);
+function qav(z0, z1)
+local(z2, z3)
+(
+z2 = 0; z3 = 0;
+loop(qi,
+( z2 != z0 && q47(z2) && q7[z2 * 8 + 1] == z1 ) ? ( z3 = 1 );
+z2 += 1;
+);
+z3;
+);
+function qu(z0)
+local(z1, z2)
+(
+z1 = q3d();
+z1 >= 0 ? (
+q14(z0);
+z2 = qv(z1);
+z2[0] = z0;
+z2[3] = q34;
+z2[4] = q35;
+z2[6] = z0 == 4 ? 0 : q2g;
+z2[7] = 0;
+z0 == 4 ? (
+z2[1] = 0; z2[2] = 0; z2[5] = 2;
+strcpy(q5m(z1), "TITLE");
+) :
+z0 == 3 ? (
+z2[1] = 0; z2[2] = 0; z2[5] = 2;
+strcpy(q5m(z1), "");
+) :
+z0 == 6 ? (
+z2[1] = 1; z2[2] = 0; z2[5] = 20; z2[6] = 0; z2[7] = 4;
+z2[3] = max(0, 4 * (q27 - 1));
+strcpy(q5m(z1), "");
+) :
+z0 == 7 ? (
+z2[1] = 1; z2[2] = 0; z2[5] = 10; z2[6] = 5; z2[7] = 0;
+strcpy(q5m(z1), "");
+) : (
+z2[1] = q3c();
+z2[2] = q2f;
+z2[5] = z0 == 2 ? 25 : (z0 == 5 ? 16 : 22);
+z0 == 5 ? ( z2[7] = 2 * 16 );
+q79(z1);
+q7d(z1, 0);
+);
+qai() ? qa4(z1, qac);
+qbi = 1;
+q6e();
+);
+z1;
+);
+function q2h(z0)
+(
+memset(qv(z0), 0, 8);
+strcpy(q5m(z0), "");
+strcpy(q5n(z0), "");
+qau[z0] = 0;
+q4z(z0);
+q97 = 1;
+q7d(z0, 0);
+qbi = 1;
+q6e();
+);
+function q6l() ( q6m() * q82 );
+function q6n()   ( max(1, ceil(8 * q82)) );
+function q44()    ( 4 * q82 );
+function q2o(z0)
+local(z1, z2, z3, z4, z5, z6, z7, z8, z9, z10, z11, z12, z13, z14)
+(
+z1 = q2d(z0); z2 = q2e(z0); z3 = q5y(z0);
+z8 = q7[z0 * 8 + 6];
+z4 = qw + q5x(z0) * qy;
+gfx_a = 1;
+q7f ? (
+gfx_r = 0.10; gfx_g = 0.12; gfx_b = 0.12;
+z9 = 0;
+loop(q6n(),
+gfx_arc(z1, z2, z3 + q6l() - z9, qw, qx, 1);
+z9 += 1;
+);
+z5 = q37(z0, 2) ? (qw + qx) * 0.5 :
+q37(z0, 4) ? qx : qw;
+q7c(q6k(z8), 1);
+z9 = 0;
+loop(q6n(),
+gfx_arc(z1, z2, z3 + q6l() - z9, min(z5, z4), max(z5, z4), 1);
+z9 += 1;
+);
+);
+gfx_r = 0.06; gfx_g = 0.06; gfx_b = 0.06;
+gfx_circle(z1, z2, z3 + q82, 1, 1);
+q7c(z8, 1);
+gfx_circle(z1, z2, z3, 1, 1);
+z6 = z1 + cos(z4 - 1.57) * (z3 - 2 * q82);
+z7 = z2 + sin(z4 - 1.57) * (z3 - 2 * q82);
+z10 = -sin(z4 - 1.57);
+z11 =  cos(z4 - 1.57);
+q48(z8) ? ( gfx_r = 0.10; gfx_g = 0.10; gfx_b = 0.10; )
+: ( gfx_r = 1;    gfx_g = 1;    gfx_b = 1;    );
+z12 = q44();
+z13 = max(1, ceil(z12));
+z9 = 0;
+loop(z13,
+z14 = z13 > 1 ? (z9 / (z13 - 1) - 0.5) * (z12 - 1) : 0;
+gfx_line(z1 + z10 * z14, z2 + z11 * z14, z6 + z10 * z14, z7 + z11 * z14, 1);
+z9 += 1;
+);
+);
+function q2x(z0)
+local(z1, z2, z3, z4, z5, z6)
+(
+z1 = q2d(z0); z2 = q2e(z0); z3 = q5y(z0); z4 = max(3 * q82, z3 * 0.62);
+z5 = q84(z0) >= 64; z6 = q7[z0 * 8 + 6];
+gfx_a = 1;
+gfx_r = 0.06; gfx_g = 0.06; gfx_b = 0.06;
+gfx_rect(z1 - z3 - q82, z2 - z4 - q82,
+2 * z3 + 2 * q82, 2 * z4 + 2 * q82);
+z5 ? q7c(z6, 1) : q7c(z6, 0.45);
+gfx_rect(z1 - z3, z2 - z4, 2 * z3, 2 * z4);
+z5 ? (
+q48(z6) ? ( gfx_r = 0.15; gfx_g = 0.15; gfx_b = 0.15; )
+: ( gfx_r = 1;    gfx_g = 1;    gfx_b = 1;    );
+gfx_a = 0.55;
+gfx_rect(z1 - z3, z2 - z4, 2 * z3, max(1, q82));
+gfx_a = 1;
+);
+);
+function q2r(z0)
+local(z1, z2, z3, z4, z5, z6, z7, z8, z9, z10, z11, z12, z13, z14, z15, z16, z17)
+(
+z1 = q2d(z0); z2 = q2e(z0);
+z3 = q62(z0); z5 = q63(z0);
+z6 = q66(z0); z16 = q7[z0 * 8 + 6];
+z11 = q61(z0); z12 = q60(z0);
+z7 = z6 ? z11 : z11 * z3;
+z8 = z6 ? z12 * z3 : z12;
+z9 = z1 - z7 * 0.5; z10 = z2 - z8 * 0.5;
+z15 = max(1, q82);
+gfx_a = 1;
+gfx_r = 0.06; gfx_g = 0.06; gfx_b = 0.06;
+gfx_rect(z9 - q82, z10 - q82, z7 + 2 * q82, z8 + 2 * q82);
+z4 = 0;
+loop(z3,
+z17 = z6 ? z3 - 1 - z4 : z4;
+z13 = z6 ? z9 : z9 + z17 * z11;
+z14 = z6 ? z10 + z17 * z12 : z10;
+z4 == z5 ? q7c(z16, 1) : q7c(z16, 0.45);
+gfx_rect(z13, z14,
+( !z6 && z17 < z3 - 1 ) ? z11 - z15 : z11,
+(  z6 && z17 < z3 - 1 ) ? z12 - z15 : z12);
+z4 += 1;
+);
+z17 = z6 ? z3 - 1 - z5 : z5;
+z13 = z6 ? z9 : z9 + z17 * z11;
+z14 = z6 ? z10 + z17 * z12 : z10;
+q48(z16) ? ( gfx_r = 0.15; gfx_g = 0.15; gfx_b = 0.15; )
+: ( gfx_r = 1;    gfx_g = 1;    gfx_b = 1;    );
+gfx_a = 0.55;
+gfx_rect(z13, z14, ( !z6 && z17 < z3 - 1 ) ? z11 - z15 : z11, max(1, q82));
+gfx_a = 1;
+);
+function q5z(z0, z1, z2)
+local(z3, z4, z5, z6)
+(
+z3 = q62(z0);
+z4 = z3 * (q66(z0) ? q60(z0) : q61(z0));
+z5 = q66(z0) ? (z2 - q2e(z0) + z4 * 0.5) / z4
+: (z1 - q2d(z0) + z4 * 0.5) / z4;
+z6 = max(0, min(z3 - 1, floor(z5 * z3)));
+q66(z0) ? z3 - 1 - z6 : z6;
+);
+function q2u(z0)
+local(z1, z2, z3, z4)
+(
+z1 = q76(z0);
+q7c(q7[z0 * 8 + 6], 1);
+gfx_a = 0.85;
+z2 = q5m(z0);
+strlen(z2) > 0 ? (
+gfx_setfont(2, "Arial", max(6, floor(9 * q82 + 0.5)));
+gfx_measurestr(z2, q80, q7j);
+z4 = q80 + 8 * q82;
+z3 = max(2 * q82, (q2a() - z4) * 0.5);
+gfx_rect(2 * q82, z1, max(0, z3 - 2 * q82), max(1, 2 * q82));
+gfx_rect(z3 + z4, z1, max(0, q2a() - 2 * q82 - z3 - z4),
+max(1, 2 * q82));
+gfx_x = z3 + 4 * q82; gfx_y = z1 - q7j * 0.5 + q82;
+gfx_drawstr(z2);
+) : (
+gfx_rect(2 * q82, z1, max(0, q2a() - 4 * q82), max(1, 2 * q82));
+);
+gfx_a = 1;
+);
+function q2w(z0)
+local(z1)
+(
+z1 = q5m(z0);
+strlen(z1) > 0 ? (
+gfx_setfont(2, "Arial", max(9, floor(25 * q82 + 0.5)));
+gfx_measurestr(z1, q80, q7j);
+q7c(q7[z0 * 8 + 6], 0.90);
+gfx_x = max(q82, q2d(z0) - q80 * 0.5);
+gfx_y = q2e(z0) - q7j * 0.5;
+gfx_drawstr(z1);
+);
+gfx_a = 1;
+);
+function q2p(z0)
+local(z1, z2)
+(
+z1 = q4b();
+( z1 > 0 && strlen(q5m(z0)) > 0 ) ? (
+z2 = q5m(z0);
+q81(z0) == 2 && q84(z0) >= 64 && strlen(q5n(z0)) > 0 ? ( z2 = q5n(z0); );
+gfx_setfont(2, "Arial", max(6, floor(18 * q82 + 0.5)));
+gfx_measurestr(z2, q80, q7j);
+q1e ? ( gfx_r = 0.08; gfx_g = 0.08; gfx_b = 0.08; )
+: ( gfx_r = 0.95; gfx_g = 0.95; gfx_b = 0.95; );
+gfx_a = 0.90;
+gfx_x = max(q82, q2d(z0) - q80 * 0.5);
+gfx_y = q2e(z0)
++ ( q81(z0) == 7 ? q17(z0) :
+q81(z0) == 6 ? q91(z0) * 0.5 :
+q30(z0) * 0.5 * q82 )
++ 3.5 * q82;
+gfx_drawstr(z2);
+gfx_a = 1;
+);
+);
+function q8v(z0)  ( q2e(z0) + q8f(z0) * 0.5 );
+function q8u(z0, z1, z2)
+( abs(z1 - q2d(z0))     <= q8z(z0) * 1.8 &&
+abs(z2 - q8v(z0)) <= q8z(z0) * 1.8 );
+function q8c(z0)  ( q94(z0) * 0.26 );
+function q89(z0)  ( q8e(z0) * 0.80 );
+function q88(z0) ( q2d(z0) + q94(z0) * 0.28 );
+function q8b(z0) ( q8e(z0) >= 9 * q82 );
+function q8a(z0, z1, z2)
+( q8b(z0) &&
+abs(z1 - q88(z0)) <= q8c(z0) * 0.5 + 2 * q82 &&
+abs(z2 - q8v(z0))    <= q89(z0) * 0.5 + 2 * q82 );
+function q3h(z0)  ( max(1, min(6, q7[z0 * 8 + 1])) );
+function q3n(z0)
+( z0 >= 5 ? sprintf(#q7u, "Gate %d", z0 - 4)
+: sprintf(#q7u, "Compressor %d", z0) );
+function q3p(z0)  ( max(-6, min(6, q7[z0 * 8 + 2])) );
+function q3l(z0)  ( q37(z0, 2) );
+function q8k(z0) ( min(2, floor((q7[z0 * 8 + 7] & 112) / 16)) );
+function q8w(z0, z1)
+( q7[z0 * 8 + 7] = q7[z0 * 8 + 7] - (q7[z0 * 8 + 7] & 112)
++ max(0, min(2, z1)) * 16 );
+function q8l(z0)
+( z0 == 1 ? strcpy(#q7u, "Input level")  :
+z0 == 2 ? strcpy(#q7u, "Output level")
+: strcpy(#q7u, "Gain reduction") );
+function q8n(z0)
+( z0 == 1 ? strcpy(#q7u, "IN")  :
+z0 == 2 ? strcpy(#q7u, "OUT")
+: strcpy(#q7u, "GR") );
+function q8t(z0) ( min(5, floor((q7[z0 * 8 + 7] & 896) / 128)) );
+function q8x(z0, z1)
+( q7[z0 * 8 + 7] = q7[z0 * 8 + 7] - (q7[z0 * 8 + 7] & 896)
++ max(0, min(5, z1)) * 128 );
+function q8s(z0)
+( z0 == 1 ? 9 : z0 == 2 ? 12 : z0 == 3 ? 14 : z0 == 4 ? 18 : z0 == 5 ? 20 : 0 );
+function q8r(z0) ( q8s(q8t(z0)) );
+function q8q(z0)
+( z0 ? sprintf(#q7u, "-%d dBFS", q8s(z0))
+: strcpy(#q7u, "0 dBFS   (full scale)") );
+function q3g(z0, z1)
+(
+q8k(z0) ? (
+q3l(z0) ?
+( z1 <= 0 ? -20 : z1 == 1 ? -10 : z1 == 2 ? -5 : z1 == 3 ? -2 :
+z1 == 4 ? 0 : 3 )
+: ( z1 >= 5 ? 3 : (z1 - 4) * 5 )
+) : (
+q3l(z0) ?
+( z1 <= 0 ? 0 : z1 == 1 ? 2 : z1 == 2 ? 4 : z1 == 3 ? 6 : z1 == 4 ? 10 : 20 )
+: ( z1 * 4 )
+);
+);
+function q8i(z0) ( q3g(z0, 0) );
+function q8g(z0) ( q3g(z0, 5) );
+function q93(z0, z1)
+local(z2, z3, z4, z5, z6)
+(
+z1 = max(q8i(z0), min(q8g(z0), z1));
+z5 = 1; z6 = 0; z2 = 0;
+loop(5,
+z3 = q3g(z0, z2); z4 = q3g(z0, z2 + 1);
+( !z6 && z1 < z4 ) ? (
+z5 = (z2 + (z1 - z3) / max(0.001, z4 - z3)) / 5;
+z6 = 1;
+);
+z2 += 1;
+);
+max(0, min(1, z5));
+);
+function q3f()   ( qb + max(0, min(255, q7z + 1)) * 8 );
+function q3m(z0)  ( q3f() + 1 + q3h(z0) );
+function q7s() ( qo + max(0, min(255, q7z + 1)) * 2 );
+function q33()
+( q32 > 0.0000001 ? 20 * log10(q32) : -144 );
+function q3k() ( gmem[q3f() + 1] );
+function q3i()  ( q3k() & 15 );
+function q3j()  ( floor(q3k() / 16) & 15 );
+function q8h(z0) ( 1 - exp(-q8d / max(0.001, z0)) );
+function qbl() ( 1.0 );
+function qbm() ( 30 );
+function qbk(z0, z1)
+(
+z1 != qd[z0] ? ( qd[z0] = z1; qc[z0] = 0; )
+: ( qc[z0] = min(qbm(), qc[z0] + q8d) );
+qc[z0] < qbl();
+);
+function q92(z0)
+local(z1, z2, z3, z4, z5, z6, z7)
+(
+z5  = q8k(z0);
+z6 = q8i(z0);
+z7 = q8g(z0);
+z5 ? (
+z3 = z5 == 1 ? q1f : gmem[q7s() + 1];
+z4  = qbk(z0, z3);
+z2 = !z4 ? -144 :
+( z5 == 1 ? q33() : gmem[q7s()] )
++ q3p(z0) + q8r(z0);
+z2 = max(-144, min(24, z2));
+z2 > qs[z0] ? ( qs[z0] = z2 )
+: ( qs[z0] += (z2 - qs[z0]) * q8h(0.06) );
+z2 = max(z6, min(z7, z2));
+) : (
+z1    = q3m(z0);
+z4 = qbk(z0, gmem[q3f()]);
+z2 = !z4 ? 0 : max(0, gmem[z1]);
+z2 > 0.05 ? ( z2 = max(0, z2 + q3p(z0)) );
+);
+qc[z0] >= qbm() ? (
+qp[z0] = z2; qq[z0] = z2;
+z5 ? ( qs[z0] = -144 );
+) : (
+z2 > qp[z0] ? ( qp[z0] = z2 )
+: ( qp[z0] += (z2 - qp[z0]) * q8h(0.06) );
+z2 > qq[z0] ? ( qq[z0] = z2; qr[z0] = 0; ) : (
+qr[z0] += q8d;
+qr[z0] > 0.4 ? ( qq[z0] = max(z6, qq[z0] - q8d * 20) );
+);
+);
+!z5 ? ( qs[z0] = qp[z0] );
+z4;
+);
+function q8p(z0)
+( q37(z0, 1) && qq[z0] > q8i(z0) + 0.05 );
+function q8o(z0, z1)
+(
+z1 != q8k(z0) ? (
+q8w(z0, z1);
+qp[z0]  = q8i(z0);
+qq[z0] = q8i(z0);
+qs[z0] = z1 ? -144 : 0;
+qc[z0] = qbm();
+);
+);
+function q8m(z0)
+local(z1)
+( z1 = q8k(z0) + 1; z1 > 2 ? ( z1 = 0 ); q8o(z0, z1); );
+function q90() ( 0.47 );
+function q87(z0, z1)
+( q90() * (2 * q93(z0, z1) - 1) );
+function q2y(z0)
+local(z1, z2, z3, z4, z5, z6, z7, z8, z9, z10, z11, z12, z13, z14, z15, z16, z17, z18,
+z19, z20, z21, z22, z23, z24, z25, z26, z27, z28, z29, z30)
+(
+z15 = q92(z0);
+z1 = q2d(z0);   z2 = q2e(z0);
+z3  = q94(z0); z4  = q8f(z0); z19 = q8e(z0);
+z5 = z1 - z3 * 0.5; z6 = z2 - (z4 + z19) * 0.5;
+z7 = z1;              z8 = z6 + z4 * 1.42;
+z9 = z4 * 1.28;
+gfx_r = 0.02; gfx_g = 0.02; gfx_b = 0.02; gfx_a = 0.9;
+gfx_rect(z5 - 2 * q82, z6 - 2 * q82,
+z3 + 4 * q82, z4 + z19 + 4 * q82);
+gfx_a = 1;
+z12 = 0;
+loop(8,
+z11 = 0.13 - z12 * 0.011;
+gfx_r = z11; gfx_g = z11; gfx_b = z11 * 1.06;
+gfx_rect(z5, z6 + z12 * z4 * 0.125, z3, ceil(z4 * 0.125) + 1);
+z12 += 1;
+);
+z27 = q8k(z0);
+z12 = 0;
+loop(11,
+( z27 && z12 >= 8 ) ? q7c(3, 1.3) : q7c(q7[z0 * 8 + 6], 1);
+z10  = q90() * (z12 / 5 - 1);
+z13 = z9 * 0.94;
+z14 = z9 * ((z12 & 1) ? 0.905 : 0.860);
+gfx_a = (z12 & 1) ? 0.55 : 0.95;
+gfx_line(z7 + z13 * sin(z10), z8 - z13 * cos(z10),
+z7 + z14 * sin(z10), z8 - z14 * cos(z10), 1);
+z12 += 1;
+);
+( z27 && z9 > 12 * q82 ) ? (
+z13 = z9 * 0.955;
+q7c(3, 1.3);
+gfx_a = 0.9;
+z12 = 0;
+loop(16,
+z10  = q90() * (0.6 + z12 * 0.025);
+z29 = q90() * (0.6 + (z12 + 1) * 0.025);
+gfx_line(z7 + z13 * sin(z10),  z8 - z13 * cos(z10),
+z7 + z13 * sin(z29), z8 - z13 * cos(z29), 1);
+z12 += 1;
+);
+);
+z4 >= 30 * q82 ? (
+z18 = max(6, floor(z4 * 0.18 + 0.5));
+gfx_setfont(2, "Arial", z18);
+z12 = 0;
+loop(6,
+( z27 && z12 >= 4 ) ? q7c(3, 1.3) : q7c(q7[z0 * 8 + 6], 1);
+gfx_a = 0.85;
+z10  = q90() * (z12 / 2.5 - 1);
+z28 = floor(q3g(z0, z12) + 0.5);
+z28 > 0 ? sprintf(#q7t, "+%d", z28) : sprintf(#q7t, "%d", z28);
+gfx_measurestr(#q7t, q80, q7j);
+z13 = z9 * 1.0;
+gfx_x = z7 + z13 * sin(z10) - q80 * 0.5;
+gfx_y = z8 - z13 * cos(z10) - q7j * 0.5;
+gfx_drawstr(#q7t);
+z12 += 1;
+);
+);
+z4 >= 38 * q82 ? (
+q7c(q7[z0 * 8 + 6], 1);
+gfx_a = 0.7;
+gfx_setfont(2, "Arial", max(6, floor(z4 * 0.22 + 0.5)));
+( q2k == 8 && q2i == z0 ) ?
+sprintf(#q7t, q3p(z0) > 0 ? "TRIM +%.1f" : "TRIM %.1f",
+q3p(z0)) :
+q37(z0, 4) ? (
+( q8k(z0) && qs[z0] <= -90 ) ?
+strcpy(#q7t, "-inf dB")
+: sprintf(#q7t, "%.1f dB", qs[z0])
+) : strcpy(#q7t, "dB");
+gfx_measurestr(#q7t, q80, q7j);
+gfx_x = z1 - q80 * 0.5; gfx_y = z6 + z4 * 0.55;
+gfx_drawstr(#q7t);
+z27 == 1 ? strcpy(#q7t, "INPUT")  :
+z27 == 2 ? strcpy(#q7t, "OUTPUT")
+: strcpy(#q7t, "COMPRESSION");
+gfx_setfont(2, "Arial", max(5, floor(z4 * 0.115 + 0.5)));
+gfx_measurestr(#q7t, q80, q7j);
+q80 < z3 * 0.95 ? (
+gfx_x = z1 - q80 * 0.5; gfx_y = z6 + z4 * 0.74;
+gfx_drawstr(#q7t);
+);
+);
+q8p(z0) ? (
+z10  = q87(z0, qq[z0]);
+z13 = z9 * 0.94; z14 = z9 * 0.860;
+gfx_r = 1; gfx_g = 0.55; gfx_b = 0.1; gfx_a = 0.9;
+gfx_line(z7 + z13 * sin(z10), z8 - z13 * cos(z10),
+z7 + z14 * sin(z10), z8 - z14 * cos(z10), 1);
+);
+z10  = q87(z0, qp[z0]);
+z16 = max(1, z9 * 0.015);
+z14 = (z8 - z6 - z4) / max(0.1, cos(z10));
+gfx_r = 0; gfx_g = 0; gfx_b = 0; gfx_a = 0.45;
+gfx_triangle(z7 + z14 * sin(z10) - z16 * cos(z10) + q82, z8 - z14 * cos(z10) - z16 * sin(z10) + q82,
+z7 + z14 * sin(z10) + z16 * cos(z10) + q82, z8 - z14 * cos(z10) + z16 * sin(z10) + q82,
+z7 + z9 * sin(z10) + q82,               z8 - z9 * cos(z10) + q82);
+q7c(q7[z0 * 8 + 6], 1);
+gfx_a = 1;
+gfx_triangle(z7 + z14 * sin(z10) - z16 * cos(z10), z8 - z14 * cos(z10) - z16 * sin(z10),
+z7 + z14 * sin(z10) + z16 * cos(z10), z8 - z14 * cos(z10) + z16 * sin(z10),
+z7 + z9 * sin(z10),               z8 - z9 * cos(z10));
+!z15 ? (
+gfx_r = 0.95; gfx_g = 0.6; gfx_b = 0.05; gfx_a = 0.85;
+gfx_circle(z5 + z3 - z4 * 0.08, z6 + z4 - z4 * 0.08, max(1.5, z4 * 0.035), 1, 1);
+);
+gfx_a = 1;
+gfx_r = 0.15; gfx_g = 0.15; gfx_b = 0.16;
+gfx_rect(z5, z6 + z4, z3, z19);
+z20 = q8z(z0); z21 = z6 + z4 + z19 * 0.5;
+gfx_r = 0.75; gfx_g = 0.75; gfx_b = 0.76;
+gfx_circle(z1, z21, z20, 1, 1);
+gfx_r = 0.30; gfx_g = 0.30; gfx_b = 0.32;
+gfx_circle(z1, z21, z20, 0, 1);
+gfx_r = 0.20; gfx_g = 0.20; gfx_b = 0.21;
+z10  = q3p(z0) / 6 * 0.9;
+z22 = max(0.7, z20 * 0.16);
+z23 = z20 * 0.72 * cos(z10); z24 = z20 * 0.72 * sin(z10);
+z25 = -z22 * sin(z10);       z26 = z22 * cos(z10);
+gfx_triangle(z1 - z23 + z25, z21 - z24 + z26, z1 + z23 + z25, z21 + z24 + z26,
+z1 + z23 - z25, z21 + z24 - z26);
+gfx_triangle(z1 - z23 + z25, z21 - z24 + z26, z1 + z23 - z25, z21 + z24 - z26,
+z1 - z23 - z25, z21 - z24 - z26);
+q8b(z0) ? (
+z30 = q88(z0);
+q8n(z27);
+gfx_setfont(2, "Arial", max(7, floor(z19 * 0.80 + 0.5)));
+gfx_measurestr(#q7u, q80, q7j);
+( z30 - q80 * 0.5 > z1 + z20 * 1.9 && z30 + q80 * 0.5 < z5 + z3 ) ? (
+gfx_r = 0.92; gfx_g = 0.92; gfx_b = 0.93;
+gfx_a = 0.95;
+gfx_x = z30 - q80 * 0.5; gfx_y = z21 - q7j * 0.5;
+gfx_drawstr(#q7u);
+);
+);
+gfx_a = 1;
+);
+function q2l(z0)
+local(z1, z2, z3, z4, z5, z6, z7, z8, z9, z10, z11, z12, z13, z14, z15, z16)
+(
+z16 = q92(z0);
+z1 = q2d(z0); z2 = q2e(z0);
+z3 = q1c(z0);
+z4 = q1b(z0); z5 = q15(z0); z6 = q16(z0); z7 = q19(z0);
+z8 = z3 ? z1 - z4 * 0.5  : z1 - z7 * 0.5;
+z9 = z3 ? z2 - z7 * 0.5 : z2 - z4 * 0.5;
+!z16 ? ( gfx_r = 0.55; gfx_g = 0.30; gfx_b = 0.02; )
+: ( gfx_r = 0.02; gfx_g = 0.02; gfx_b = 0.02; );
+gfx_a = z16 ? 0.55 : 0.75;
+gfx_rect(floor(z8 - q82 + 0.5), floor(z9 - q82 + 0.5),
+max(1, floor((z3 ? z4 : z7) + 2 * q82 + 0.5)),
+max(1, floor((z3 ? z7 : z4) + 2 * q82 + 0.5)));
+z11 = q93(z0, qp[z0]);
+z12 = q8p(z0) ? q93(z0, qq[z0]) : -1;
+z13 = z12 >= 0 ? min(4, floor(z12 * 5)) : -1;
+z10 = 0;
+loop(5,
+z14 = max(0, min(1, z11 * 5 - z10));
+z10 == z13 ? ( z14 = 1 );
+z10 >= 3 ? q7c(3, 1.15) : q7c(q7[z0 * 8 + 6], 1);
+gfx_a = 0.20 + 0.80 * z14;
+z15 = (z3 ? z10 : 4 - z10) * (z5 + z6);
+gfx_rect(floor((z3 ? z8 : z8 + z15) + 0.5),
+floor((z3 ? z9 + z15 : z9) + 0.5),
+max(1, floor((z3 ? z4 : z5) + 0.5)),
+max(1, floor((z3 ? z5 : z4) + 0.5)));
+z10 += 1;
+);
+gfx_a = 1;
+);
+function q86(z0)
+( qa9(z0) && q6q(z0) < gfx_h && q6q(z0) + q38(z0) > 0 );
+function q2m(z0)
+(
+q86(z0) ? (
+q81(z0) == 4 ? q2w(z0) :
+q81(z0) == 3 ? q2u(z0) : (
+q81(z0) == 7 ? q2l(z0) :
+q81(z0) == 6 ? q2y(z0) :
+q81(z0) == 5 ? q2r(z0) :
+q81(z0) == 2 ? q2x(z0) : q2o(z0);
+q2p(z0);
+);
+);
+);
+function qb3(z0)
+local(z1, z2, z3)
+(
+q81(z0) == 4 ?
+gfx_rect(q2d(z0) - 60 * q82, q2e(z0) - 20 * q82, 120 * q82, 40 * q82, 0) :
+q81(z0) == 3 ?
+gfx_rect(0, q76(z0) - 3 * q82, q2a(), 8 * q82, 0) :
+q81(z0) == 5 ? (
+z1 = q62(z0);
+z2 = q61(z0) * (q66(z0) ? 1 : z1) + 6 * q82;
+z3 = q60(z0) * (q66(z0) ? z1 : 1) + 6 * q82;
+gfx_rect(q2d(z0) - z2 * 0.5, q2e(z0) - z3 * 0.5, z2, z3, 0);
+) :
+q81(z0) == 6 ? (
+z2 = q94(z0) + 6 * q82;
+z3 = q91(z0) + 6 * q82;
+gfx_rect(q2d(z0) - z2 * 0.5, q2e(z0) - z3 * 0.5, z2, z3, 0);
+) :
+q81(z0) == 7 ? (
+z2 = q18(z0) * 2 + 6 * q82;
+z3 = q17(z0) * 2 + 6 * q82;
+gfx_rect(q2d(z0) - z2 * 0.5, q2e(z0) - z3 * 0.5, z2, z3, 0);
+) :
+gfx_circle(q2d(z0), q2e(z0), q5y(z0) + q6l() + 2 * q82, 0, 1);
+);
+function q2n(z0)
+(
+gfx_r = 1; gfx_g = 1; gfx_b = 0.3; gfx_a = 0.85;
+qb3(z0);
+gfx_a = 1;
+);
+function qaw(z0)
+(
+gfx_r = 0.35; gfx_g = 0.78; gfx_b = 1; gfx_a = 0.9;
+qb3(z0);
+gfx_a = 1;
+);
+function q49() ( 3 * q82 );
+function q3y(z0, z1, z2, z3)
+local(z4, z5, z6, z7)
+(
+q81(z0) == 4 ? ( abs(z1 - q2d(z0)) <= 60 * q82 + z3 && abs(z2 - q2e(z0)) <= 20 * q82 + z3 ) :
+q81(z0) == 3 ? ( abs(z2 - q76(z0) - q82) <= 5 * q82 + z3 ) : (
+z4 = q2d(z0); z5 = q2e(z0); z6 = q5y(z0);
+q81(z0) == 6 ? (
+abs(z1 - z4) <= q94(z0) * 0.5 + 2 * q82 + z3 &&
+abs(z2 - z5) <= q91(z0) * 0.5 + 2 * q82 + z3;
+) :
+q81(z0) == 7 ? (
+abs(z1 - z4) <= q18(z0) + 2 * q82 + z3 &&
+abs(z2 - z5) <= q17(z0) + 2 * q82 + z3;
+) :
+q81(z0) == 5 ? (
+z7 = q62(z0) * 0.5;
+abs(z1 - z4) <= q61(z0) * (q66(z0) ? 0.5 : z7) + 2 * q82 + z3 &&
+abs(z2 - z5) <= q60(z0) * (q66(z0) ? z7 : 0.5) + 2 * q82 + z3;
+) :
+q81(z0) == 2 ?
+( abs(z1 - z4) <= z6 + 2 * q82 + z3 &&
+abs(z2 - z5) <= z6 * 0.62 + 2 * q82 + z3 ) :
+( (z1 - z4) * (z1 - z4) + (z2 - z5) * (z2 - z5) <=
+(z6 + q6l() + q49() + z3) *
+(z6 + q6l() + q49() + z3) );
+);
+);
+function q3x(z0, z1, z2) ( q3y(z0, z1, z2, 0) );
+function q5v(z0, z1)
+local(z2, z3)
+(
+z2 = q9f - 1; z3 = -1;
+loop(q9f,
+(z3 < 0 && q83(z2) && !q5p(z2) && q86(z2) && q3x(z2, z0, z1)) ? ( z3 = z2 );
+z2 -= 1;
+);
+z2 = q9f - 1;
+loop(q9f,
+(z3 < 0 && q83(z2) && q5p(z2) && q86(z2) && q3x(z2, z0, z1)) ? ( z3 = z2 );
+z2 -= 1;
+);
+z3;
+);
+function q3q() ( 3 * q82 );
+function q5w(z0, z1)
+local(z2, z3, z4, z5, z6, z7, z8)
+(
+z8 = q3q();
+z2 = qi - 1; z3 = -1; z4 = 0;
+loop(qi,
+( q83(z2) && !q5p(z2) && q86(z2) && q3y(z2, z0, z1, z8) ) ? (
+z6 = z0 - q2d(z2); z7 = z1 - q2e(z2);
+z5  = z6 * z6 + z7 * z7;
+( z3 < 0 || z5 < z4 ) ? ( z3 = z2; z4 = z5; );
+);
+z2 -= 1;
+);
+z3;
+);
+function q5d() ( q5c = 0; strcpy(#q58, ""); );
+function q5b(z0, z1)
+(
+strlen(#q58) ? strcat(#q58, "|");
+strcat(#q58, z1);
+qj[q5c] = z0;
+q5c += 1;
+);
+function q5g(z0)
+(
+strlen(#q58) ? strcat(#q58, "|");
+strcat(#q58, z0);
+);
+function q5f() ( strlen(#q58) ? strcat(#q58, "|"); );
+function q5e(z0, z1)
+local(z2)
+(
+gfx_x = z0; gfx_y = z1;
+z2 = gfx_showmenu(#q58);
+(z2 > 0 && z2 <= q5c) ? qj[z2 - 1] : 0;
+);
+function q26(z0)
+(
+z0 == 0 ? 0 :
+z0 == 1 ? 9 :
+z0 == 2 ? 7 :
+z0 == 3 ? 10 :
+z0 == 4 ? 1 :
+z0 == 5 ? 3 :
+z0 == 6 ? 8 :
+z0 == 7 ? 6 :
+z0 == 8 ? 5 :
+z0 == 9 ? 2 :
+4
+);
+function q5s(z0)
+(
+q5r   = z0;
+q5q = 1;
+);
+function q5u()
+local(z0, z1, z2)
+(
+q5q ? (
+gmem[ql]     = 1;
+gmem[ql + 2] = get_host_placement() + 1;
+gmem[ql + 3] = q5r;
+q5t    = q7v;
+q5q = 0;
+);
+z0 = gmem[ql];
+z2 = ( gmem[ql + 2] == get_host_placement() + 1 &&
+gmem[ql + 3] == q5r );
+!z2 ? (
+q5r = -1;
+) :
+z0 == 2 ? (
+z1 = -1 - max(0, min(16777215, floor(gmem[ql + 1] + 0.5)));
+q5r == -2 ? ( q1d = z1; ) :
+q83(q5r) ? ( q7[q5r * 8 + 6] = z1; );
+q5r = -1;
+gmem[ql] = 0;
+) :
+z0 == 3 ? (
+q5r = -1;
+gmem[ql] = 0;
+) :
+( z0 == 1 && q7v - q5t > 5 ) ? (
+q5r >= 0 ? (
+q4i   = 2;
+q4j = q5r;
+q4k = q7v;
+);
+q5r = -1;
+gmem[ql] = 0;
+);
+);
+function q1k(z0)
+local(z1, z2)
+(
+q5g(">Color...");
+q5b(1999, z0 < 0 ? "!Palette..." : "Palette...");
+q5f();
+z1 = 0;
+loop(11,
+z2 = q26(z1);
+strcpy(#q7t, z1 == 10 ? "<" : "");
+strcat(#q7t, z2 == z0 ? "!" : "");
+z2 ==  0 ? strcat(#q7t, "White")      :
+z2 ==  1 ? strcat(#q7t, "Dark")       :
+z2 ==  2 ? strcat(#q7t, "Green")      :
+z2 ==  3 ? strcat(#q7t, "Red")        :
+z2 ==  4 ? strcat(#q7t, "Blue")       :
+z2 ==  5 ? strcat(#q7t, "Yellow")     :
+z2 ==  6 ? strcat(#q7t, "Orange")     :
+z2 ==  8 ? strcat(#q7t, "Pink")       :
+z2 ==  9 ? strcat(#q7t, "Light gray") :
+z2 == 10 ? strcat(#q7t, "Dark gray")  :
+strcat(#q7t, "Gray");
+q5b(1000 + z2, #q7t);
+z1 += 1;
+);
+);
+function q1i(z0)
+local(z1, z2)
+(
+sprintf(#q7t, ">CC number  (CC %d)...", z0);
+q5g(#q7t);
+z1 = 0;
+loop(8,
+strcpy(#q7t, z1 == 7 ? "<>" : ">");
+sprintf(#q7u, "CC %d - %d", z1 * 16, z1 * 16 + 15);
+strcat(#q7t, #q7u);
+q5g(#q7t);
+z2 = 0;
+loop(16,
+strcpy(#q7t, z2 == 15 ? "<" : "");
+strcat(#q7t, (z1 * 16 + z2) == z0 ? "!" : "");
+sprintf(#q7u, "CC %d", z1 * 16 + z2);
+strcat(#q7t, #q7u);
+q5b(4000 + z1 * 16 + z2, #q7t);
+z2 += 1;
+);
+z1 += 1;
+);
+);
+function q1j(z0)
+local(z1)
+(
+z0 < 0 ? strcpy(#q7u, "all") : sprintf(#q7u, "ch %d", z0 + 1);
+sprintf(#q7t, ">MIDI channel  (%s)...", #q7u);
+q5g(#q7t);
+q5b(2000, z0 < 0 ? "!All channels" : "All channels");
+z1 = 0;
+loop(16,
+strcpy(#q7t, z1 == 15 ? "<" : "");
+strcat(#q7t, z1 == z0 ? "!" : "");
+sprintf(#q7u, "Channel %d", z1 + 1);
+strcat(#q7t, #q7u);
+q5b(2001 + z1, #q7t);
+z1 += 1;
+);
+);
+function q1s(z0)
+local(z1, z2)
+(
+q5g(">Size...");
+z1 = 0;
+loop(6,
+z2 = 12 + z1 * 5;
+strcpy(#q7t, z1 == 5 ? "<" : "");
+strcat(#q7t, z2 == z0 ? "!" : "");
+z1 == 0 ? strcat(#q7t, "Tiny")       :
+z1 == 1 ? strcat(#q7t, "Small")      :
+z1 == 2 ? strcat(#q7t, "Medium")     :
+z1 == 3 ? strcat(#q7t, "Large")      :
+z1 == 4 ? strcat(#q7t, "Very large") :
+strcat(#q7t, "Huge");
+q5b(3000 + z2, #q7t);
+z1 += 1;
+);
+);
+function q1p(z0)
+local(z1)
+(
+sprintf(#q7t, ">Positions  (%d)...", z0);
+q5g(#q7t);
+z1 = 2;
+loop(5,
+strcpy(#q7t, z1 == 6 ? "<" : "");
+strcat(#q7t, z1 == z0 ? "!" : "");
+sprintf(#q7u, "%d positions", z1);
+strcat(#q7t, #q7u);
+q5b(6000 + z1, #q7t);
+z1 += 1;
+);
+);
+function q3o(z0) ( z0 == 0 ? 1 : z0 == 1 ? 2 : 5 );
+function q1n(z0)
+local(z1, z2, z3, z4, z5, z6, z7)
+(
+z5 = q3k() > 0;
+z3 = q3i(); z4 = q3j();
+z7 = 3;
+q3n(max(1, min(6, z0)));
+sprintf(#q7t, ">Source  (%s)...", #q7u);
+q5g(#q7t);
+z2 = 0;
+loop(z7,
+z1 = q3o(z2);
+strcpy(#q7t, z2 == z7 - 1 ? "<" : "");
+strcat(#q7t, z1 == z0 ? "!" : "");
+q3n(z1);
+strcat(#q7t, #q7u);
+strcat(#q7t, " on this track");
+z6 = z1 >= 5 ? (z1 - 4 > z4) : (z1 > z3);
+( z5 && z6 ) ? strcat(#q7t, "   -- none");
+q5b(8000 + z1, #q7t);
+z2 += 1;
+);
+);
+function q8y(z0)
+( z0 == 0 ? 12 : z0 == 1 ? 14 : z0 == 2 ? 16 : z0 == 3 ? 20 : z0 == 4 ? 24 : 28 );
+function q1t(z0)
+local(z1, z2)
+(
+sprintf(#q7t, ">Size  (%d px)...", floor(max(4, z0) * 7.5 + 0.5));
+q5g(#q7t);
+z1 = 0;
+loop(6,
+z2 = q8y(z1);
+strcpy(#q7t, z1 == 5 ? "<" : "");
+strcat(#q7t, z2 == z0 ? "!" : "");
+z1 == 0 ? strcpy(#q7u, "Tiny")       :
+z1 == 1 ? strcpy(#q7u, "Small")      :
+z1 == 2 ? strcpy(#q7u, "Medium")     :
+z1 == 3 ? strcpy(#q7u, "Large")      :
+z1 == 4 ? strcpy(#q7u, "Very large") :
+strcpy(#q7u, "Huge");
+strcat(#q7t, #q7u);
+sprintf(#q7u, "   %d px", floor(z2 * 7.5 + 0.5));
+strcat(#q7t, #q7u);
+q5b(3000 + z2, #q7t);
+z1 += 1;
+);
+);
+function q1a(z0)
+( z0 == 0 ? 6 : z0 == 1 ? 8 : z0 == 2 ? 10 : z0 == 3 ? 12 : z0 == 4 ? 16 : 20 );
+function q1h(z0)
+local(z1, z2)
+(
+sprintf(#q7t, ">Size  (%d px)...", floor(max(4, z0) * 6 + 0.5));
+q5g(#q7t);
+z1 = 0;
+loop(6,
+z2 = q1a(z1);
+strcpy(#q7t, z1 == 5 ? "<" : "");
+strcat(#q7t, z2 == z0 ? "!" : "");
+z1 == 0 ? strcpy(#q7u, "Tiny")       :
+z1 == 1 ? strcpy(#q7u, "Small")      :
+z1 == 2 ? strcpy(#q7u, "Medium")     :
+z1 == 3 ? strcpy(#q7u, "Large")      :
+z1 == 4 ? strcpy(#q7u, "Very large") :
+strcpy(#q7u, "Huge");
+strcat(#q7t, #q7u);
+sprintf(#q7u, "   %d px", floor(z2 * 6 + 0.5));
+strcat(#q7t, #q7u);
+q5b(3000 + z2, #q7t);
+z1 += 1;
+);
+);
+function q1r(z0)
+(
+q8k(z0) ? (
+q5b(8100, q3l(z0) ? "Linear   -20 -15 -10 -5 0 +3"
+: "!Linear   -20 -15 -10 -5 0 +3");
+q5b(8101, q3l(z0) ? "!Exponential   -20 -10 -5 -2 0 +3"
+: "Exponential   -20 -10 -5 -2 0 +3");
+) : (
+q5b(8100, q3l(z0) ? "Linear   0 4 8 12 16 20"
+: "!Linear   0 4 8 12 16 20");
+q5b(8101, q3l(z0) ? "!Exponential   0 2 4 6 10 20"
+: "Exponential   0 2 4 6 10 20");
+);
+);
+function q1q(z0)
+local(z1, z2)
+(
+z1 = q8t(z0);
+q8q(z1);
+sprintf(#q7t, ">Reference  (%s)...", #q7u);
+q5g(#q7t);
+z2 = 0;
+loop(6,
+strcpy(#q7t, z2 == 5 ? "<" : "");
+strcat(#q7t, z2 == z1 ? "!" : "");
+q8q(z2);
+strcat(#q7t, #q7u);
+q5b(8300 + z2, #q7t);
+z2 += 1;
+);
+);
+function q1o(z0)
+local(z1, z2)
+(
+z1 = q8k(z0);
+q8l(z1);
+sprintf(#q7t, ">Measure  (%s)...", #q7u);
+q5g(#q7t);
+z2 = 0;
+loop(3,
+strcpy(#q7t, z2 == 2 ? "<" : "");
+strcat(#q7t, z2 == z1 ? "!" : "");
+q8l(z2);
+strcat(#q7t, #q7u);
+q5b(8200 + z2, #q7t);
+z2 += 1;
+);
+);
+function q3t(z0)
+(
+z0 <= 0 ? strcpy(#q7u, "Independent")
+: sprintf(#q7u, "Group %c", 64 + z0);
+);
+function q1m(z0)
+local(z1)
+(
+q3t(z0);
+sprintf(#q7t, ">Scroll group: %s...", #q7u);
+q5g(#q7t);
+z1 = 0;
+loop(qk + 1,
+strcpy(#q7t, z1 == qk ? "<" : "");
+strcat(#q7t, z1 == z0 ? "!" : "");
+q3t(z1);
+strcat(#q7t, #q7u);
+q5b(7000 + z1, #q7t);
+z1 += 1;
+);
+);
+function q1l(z0, z1)
+local(z2)
+(
+sprintf(#q7t, ">Grid: %d columns...", z0);
+q5g(#q7t);
+z2 = 1;
+loop(z1,
+strcpy(#q7t, z2 == z1 ? "<" : "");
+strcat(#q7t, z2 == z0 ? "!" : "");
+sprintf(#q7u, "%d", z2);
+strcat(#q7t, #q7u);
+q5b(5000 + z2, #q7t);
+z2 += 1;
+);
+);
+function q9w()
+local(z0)
+(
+qai() ? sprintf(#q7t, ">Tabs: %d pages...", qa8)
+: strcpy(#q7t, ">Tabs: off...");
+q5g(#q7t);
+q5b(9000, qai() ? "Off" : "!Off");
+z0 = 2;
+loop(q9u - 1,
+strcpy(#q7t, z0 == q9u ? "<" : "");
+strcat(#q7t, qa8 == z0 ? "!" : "");
+sprintf(#q7u, "%d pages", z0);
+strcat(#q7t, #q7u);
+q5b(9000 + z0, #q7t);
+z0 += 1;
+);
+);
+function q9v(z0)
+local(z1)
+(
+qai() ? (
+qaf(qa5(z0));
+sprintf(#q7t, ">Tab: %s...", #q7u);
+q5g(#q7t);
+z1 = 0;
+loop(qa8,
+strcpy(#q7t, z1 == qa8 - 1 ? "<" : "");
+strcat(#q7t, z1 == qa5(z0) ? "!" : "");
+qaf(z1);
+strcat(#q7t, #q7u);
+q5b(8400 + z1, #q7t);
+z1 += 1;
+);
+);
+);
+function qa7(z0, z1, z2)
+local(z3)
+(
+q5d();
+qaf(z0);
+sprintf(#q7t, "Rename tab  (%s)...", #q7u);
+q5b(1, #q7t);
+q5b(2, strlen(qag(z0)) ? "Reset tab name" : "#Reset tab name");
+q5f();
+q9w();
+z3 = q5e(z1, z2);
+z3 >= 9000 && z3 < 9100 ? qaa(z3 - 9000) :
+z3 == 1 ? ( q6h = 2 * qi + z0; q6g = 1; ) :
+z3 == 2 ? ( strcpy(qag(z0), ""); q21 = 1; );
+);
+function q23() ( gmem[0] == 0x5B0108 );
+function q22()
+local(z0, z1, z2, z3, z4)
+(
+z0 = 0;
+loop(qi * 8, gmem[q0 + z0] = q7[z0]; z0 += 1;);
+gmem[q1 + 0] = q1d;
+gmem[q1 + 1] = q2g;
+gmem[q1 + 2] = q2f;
+gmem[q1 + 3] = q27;
+gmem[q1 + 4] = qa8;
+gmem[q1 + 5] = q7e;
+gmem[q1 + 6] = q7f;
+gmem[q1 + 7] = qbf;
+gmem[q1 + 8] = qbg;
+z0 = 0;
+loop(q9u,
+z3 = qag(z0); z4 = q9t + z0 * 16;
+z2 = min(15, strlen(z3));
+gmem[z4] = z2;
+z1 = 0;
+loop(z2, gmem[z4 + 1 + z1] = str_getchar(z3, z1); z1 += 1;);
+z0 += 1;
+);
+z0 = 0;
+loop(qi,
+z3 = q5m(z0); z4 = q2 + z0 * 16;
+z2 = min(15, strlen(z3));
+gmem[z4] = z2;
+z1 = 0;
+loop(z2, gmem[z4 + 1 + z1] = str_getchar(z3, z1); z1 += 1;);
+z3 = q5n(z0); z4 = q3 + z0 * 16;
+z2 = min(15, strlen(z3));
+gmem[z4] = z2;
+z1 = 0;
+loop(z2, gmem[z4 + 1 + z1] = str_getchar(z3, z1); z1 += 1;);
+z0 += 1;
+);
+z3 = q4u();
+z2 = min(60, strlen(z3));
+gmem[q4 + 0] = q4v;
+gmem[q4 + 1] = z2;
+z1 = 0;
+loop(z2, gmem[q4 + 2 + z1] = str_getchar(z3, z1); z1 += 1;);
+z0 = 0;
+loop(qi, gmem[q4 + 62 + z0] = q4y(z0); z0 += 1;);
+gmem[0] = 0x5B0108;
+);
+function q24()
+local(z0, z1, z2, z3, z4, z5)
+(
+q23() ? (
+z0 = 0;
+loop(qi,
+z5 = q83(z0);
+z1 = 0;
+loop(8, q7[z0 * 8 + z1] = gmem[q0 + z0 * 8 + z1]; z1 += 1;);
+(!z5 && q47(z0)) ? q7d(z0, q81(z0) == 2 ? 0 : (q37(z0, 2) ? 63.5 : (q37(z0, 4) ? 127 : 0)));
+z3 = q5m(z0); z4 = q2 + z0 * 16;
+strcpy(z3, "");
+z2 = min(15, max(0, gmem[z4]));
+z1 = 0;
+loop(z2,
+sprintf(#q7t, "%c", gmem[z4 + 1 + z1]);
+strcat(z3, #q7t);
+z1 += 1;
+);
+z3 = q5n(z0); z4 = q3 + z0 * 16;
+strcpy(z3, "");
+z2 = min(15, max(0, gmem[z4]));
+z1 = 0;
+loop(z2,
+sprintf(#q7t, "%c", gmem[z4 + 1 + z1]);
+strcat(z3, #q7t);
+z1 += 1;
+);
+z0 += 1;
+);
+q1d     = gmem[q1 + 0];
+q2g    = gmem[q1 + 1];
+q2f   = gmem[q1 + 2];
+q27       = max(1, min(4, gmem[q1 + 3]));
+q7e = gmem[q1 + 5];
+q7f  = gmem[q1 + 6];
+gmem[q1 + 7] > 0 ? ( qbf = max(18, gmem[q1 + 7]) );
+gmem[q1 + 8] > 0 ? ( qbg = max(40, gmem[q1 + 8]) );
+z2 = floor(gmem[q1 + 4] + 0.5);
+qa8 = z2 >= 2 ? min(q9u, z2) : 0;
+qac  = max(0, min(max(0, qa8 - 1), qac));
+z0 = 0;
+loop(q9u,
+z3 = qag(z0); z4 = q9t + z0 * 16;
+strcpy(z3, "");
+z2 = min(15, max(0, gmem[z4]));
+z1 = 0;
+loop(z2,
+sprintf(#q7t, "%c", gmem[z4 + 1 + z1]);
+strcat(z3, #q7t);
+z1 += 1;
+);
+z0 += 1;
+);
+strcpy(q4u(), "");
+z2 = min(60, max(0, gmem[q4 + 1]));
+z1 = 0;
+loop(z2,
+sprintf(#q7t, "%c", gmem[q4 + 2 + z1]);
+strcat(q4u(), #q7t);
+z1 += 1;
+);
+q4v = gmem[q4 + 0];
+z0 = 0;
+loop(qi,
+z4 = gmem[q4 + 62 + z0];
+z4 > 0 ? q50(z0, z4 - 1) : q4z(z0);
+z0 += 1;
+);
+q4q  = 0;
+q97 = 1;
+q6d();
+q6e();
+z0 = 0; loop(qi, qe[z0] = -1; z0 += 1;);
+);
+);
+function qb2(z0) ( qat + 128 + z0 * 48 );
+function qaz() ( gmem[qat] == 0x5B0109 && gmem[qat + 1] > 0 );
+function qay() ( qaz() ? min(qi, gmem[qat + 1]) : 0 );
+function qb1(z0, z1, z2)
+local(z3, z4)
+(
+z3 = max(0, min(z2, strlen(z1)));
+gmem[z0] = z3;
+z4 = 0;
+loop(z3, gmem[z0 + 1 + z4] = str_getchar(z1, z4); z4 += 1;);
+);
+function qax(z0)
+local(z1, z2, z3, z4, z5, z6, z7, z8)
+(
+z6 = 0; z7 = 0; z3 = 0; z1 = 0;
+loop(qi,
+z8 = q83(z1) && ( z0 >= 0 ? z1 == z0 : qau[z1] );
+z8 ? (
+z4 = qv(z1);
+( z3 == 0 || z4[3] < z6 ) ? ( z6 = z4[3] );
+( z3 == 0 || z4[4] < z7 ) ? ( z7 = z4[4] );
+z3 += 1;
+);
+z1 += 1;
+);
+z3 > 0 ? (
+z3 = 0; z1 = 0;
+loop(qi,
+z8 = q83(z1) && ( z0 >= 0 ? z1 == z0 : qau[z1] );
+z8 ? (
+z4 = qv(z1); z5 = qb2(z3);
+z2 = 0; loop(8, gmem[z5 + z2] = z4[z2]; z2 += 1;);
+gmem[z5 + 3] = z4[3] - z6;
+gmem[z5 + 4] = z4[4] - z7;
+gmem[z5 + 8] = q4y(z1);
+gmem[z5 + 9] = q85(z1);
+qb1(z5 + 10, q5m(z1),  15);
+qb1(z5 + 27, q5n(z1), 15);
+z3 += 1;
+);
+z1 += 1;
+);
+gmem[qat + 1] = z3;
+gmem[qat + 2] = q4v;
+qb1(qat + 3, q4u(), 60);
+gmem[qat] = 0x5B0109;
+);
+z3;
+);
+function qb0(z0, z1)
+local(z2, z3, z4, z5, z6, z7, z8, z9, z10)
+(
+z5 = qay();
+z10 = 0;
+z5 > 0 ? (
+q98(qat + 4, gmem[qat + 3]);
+z8 = 0;
+strlen(#q7u) > 0 ? (
+q4w() ? (
+z8 = strcmp(q4u(), #q7u) == 0 && q4v == gmem[qat + 2];
+) : (
+strcpy(q4u(), #q7u);
+q4v   = gmem[qat + 2];
+q4q = 0;
+z8 = 1;
+);
+);
+qb6();
+z4 = 0;
+loop(z5,
+z2 = q3d();
+z2 >= 0 ? (
+z7 = qb2(z4);
+z6 = qv(z2);
+z3 = 0; loop(8, z6[z3] = gmem[z7 + z3]; z3 += 1;);
+z6[3] = max(0, min(q54(), z0 + gmem[z7 + 3]));
+z6[4] = max(0, min(q55(), z1 + gmem[z7 + 4]));
+qa4(z2, qai() ? qac : 0);
+( q1z(z6[3], z6[4], z2, q9y()) >= 0 &&
+q36(q9y()) ) ? (
+z6[3] = q34; z6[4] = q35;
+);
+q98(z7 + 11, min(15, gmem[z7 + 10]));
+strcpy(q5m(z2), #q7u);
+q98(z7 + 28, min(15, gmem[z7 + 27]));
+strcpy(q5n(z2), #q7u);
+q47(z2) ? (
+z9 = q46(z2);
+qav(z2, z6[1]) ? (
+z6[1] = q3c();
+z9 ? q79(z2);
+);
+q7d(z2, max(0, min(127, gmem[z7 + 9])));
+);
+( z8 && gmem[z7 + 8] > 0 ) ? q50(z2, gmem[z7 + 8] - 1)
+: q4z(z2);
+qau[z2]   = 1;
+qe[z2] = -1;
+z10 += 1;
+);
+z4 += 1;
+);
+q97 = 1;
+qbi = 1;
+q6e();
+);
+z10;
+);
+function q59(z0, z1, z2)
+local(z3, z4, z5, z6, z7)
+(
+z4 = qv(z0);
+q5d();
+z4[0] == 4 ? (
+sprintf(#q7t, "Rename title  (%s)...", q5m(z0)); q5b(1, #q7t);
+q1k(z4[6]);
+) :
+z4[0] == 3 ? (
+q1k(z4[6]);
+) :
+z4[0] == 6 ? (
+sprintf(#q7t, "Rename  (%s)...", q5m(z0)); q5b(1, #q7t);
+q5f();
+q1o(z0);
+q8k(z0) ? q1q(z0) : q1n(z4[1]);
+q1r(z0);
+q1k(z4[6]);
+q1t(z4[5]);
+q5f();
+q5b(19, q37(z0, 4) ? "!Show value" : "Show value");
+q5b(6,  q37(z0, 1) ? "!Peak hold"  : "Peak hold");
+) :
+z4[0] == 7 ? (
+sprintf(#q7t, "Rename  (%s)...", q5m(z0)); q5b(1, #q7t);
+q5f();
+q1n(z4[1]);
+q1r(z0);
+q1k(z4[6]);
+q1h(z4[5]);
+q5f();
+q5b(14, q1c(z0) ? "!Vertical" : "Vertical");
+q5b(6,  q37(z0, 1) ? "!Peak hold" : "Peak hold");
+) : (
+sprintf(#q7t, "Rename  (%s)...", q5m(z0));         q5b(1, #q7t);
+z4[0] == 2 ? (
+sprintf(#q7t, "Rename (ON)  (%s)...", q5n(z0)); q5b(101, #q7t);
+);
+q5f();
+q1i(z4[1]);
+q1j(z4[2]);
+q1k(z4[6]);
+q1s(z4[5]);
+q5f();
+z4[0] == 5 ? (
+q1p(q62(z0));
+q5b(14, q66(z0) ? "!Vertical" : "Vertical");
+) :
+z4[0] == 2 ? (
+q5b(6, q37(z0, 1) ? "!Momentary" : "Momentary");
+) : (
+q5b(7, q37(z0, 2) ? "!Bipolar" : "Bipolar");
+q5b(8, q37(z0, 4) ? "!Init at max" : "Init at max");
+);
+q5f();
+q4x(z0) ? (
+q5b(30, "Re-learn plugin parameter...");
+q5b(31, "Clear plugin link");
+) : (
+q5b(30, "Learn plugin parameter...");
+);
+);
+q5f();
+q9v(z0);
+q5b(10, q2z ? "!Edit mode" : "Edit mode");
+q5f();
+z7 = qb9();
+( z7 >= 2 && qb4(z0) ) ? (
+sprintf(#q7t, "Copy selection  (%d)", z7);
+q5b(40, #q7t);
+) : (
+q5b(40, "Copy element");
+);
+z7 = qay();
+z7 ? ( sprintf(#q7t, "Paste  (%d)", z7); q5b(41, #q7t); )
+: q5b(0, "#Paste");
+q5b(42, qb4(z0) ? "!Select  (shift-click)" : "Select  (shift-click)");
+q5f();
+q5b(11, "Duplicate");
+q5b(12, "Delete");
+z3 = q5e(z1, z2);
+z3 >= 8400 && z3 < 8500 ? (
+z5 = z3 - 8400;
+qa4(z0, z5);
+( q1z(z4[3], z4[4], z0, z5) >= 0 && q36(z5) ) ? (
+z4[3] = q34; z4[4] = q35;
+);
+) :
+z3 >= 8000 && z3 < 8100 ? ( z4[1] = z3 - 8000; ) :
+z3 == 8100 ? ( q37(z0, 2) ? q7w(z0, 2) ) :
+z3 == 8101 ? ( q37(z0, 2) ? 0 : q7w(z0, 2) ) :
+z3 >= 8200 && z3 < 8300 ? q8o(z0, z3 - 8200) :
+z3 >= 8300 && z3 < 8400 ? q8x(z0, z3 - 8300) :
+z3 == 19 ? q7w(z0, 4) :
+z3 == 1999 ? q5s(z0) :
+z3 >= 1000 && z3 < 2000 ? ( z4[6] = z3 - 1000; ) :
+z3 >= 2000 && z3 < 3000 ? ( z4[2] = (z3 - 2001 < 0) ? -1 : z3 - 2001; ) :
+z3 >= 3000 && z3 < 4000 ? ( z4[5] = z3 - 3000; ) :
+z3 >= 4000 && z3 < 5000 ? (
+z5 = q46(z0);
+z4[1] = z3 - 4000;
+z5 ? q79(z0);
+) :
+z3 >= 6000 && z3 < 7000 ? (
+q64(z0, z3 - 6000);
+q7d(z0, q65(z0, q63(z0)));
+) :
+z3 == 30 ? q4n(z0, 0) :
+z3 == 31 ? q4n(z0, 1) :
+z3 == 14 ? q7w(z0, 8) :
+z3 ==  1 ? ( q6h = z0; q6g = 1; ) :
+z3 == 101 ? ( q6h = z0 + qi; q6g = 1; ) :
+z3 ==  6 ? q7w(z0, 1) :
+z3 ==  7 ? q7w(z0, 2) :
+z3 ==  8 ? q7w(z0, 4) :
+z3 ==  9 ? q7d(z0, q37(z0, 2) ? 63.5 : (q37(z0, 4) ? 127 : 0)) :
+z3 == 10 ? ( q2z = q2z ? 0 : 1 ) :
+z3 == 40 ? ( qax( ( qb9() >= 2 && qb4(z0) ) ? -1 : z0 ) ) :
+z3 == 41 ? ( q36(q9y()); qb0(q34, q35); ) :
+z3 == 42 ? ( qbb(z0); q2z = 1; ) :
+z3 == 11 ? (
+z6 = qu(z4[0]);
+z6 >= 0 ? (
+z5 = qv(z6);
+z5[5] = z4[5]; z5[6] = z4[6]; z5[7] = z4[7];
+( z4[0] == 6 || z4[0] == 7 ) ? ( z5[1] = z4[1]; z5[2] = z4[2]; );
+q46(z0) ? q79(z6)
+: strcpy(q5m(z6), q5m(z0));
+z4[0] == 2 ? strcpy(q5n(z6), q5n(z0));
+);
+) :
+z3 == 12 ? q2h(z0);
+);
+function q6j()
+local(z0, z1)
+(
+z0 = 0;
+loop(qi,
+q83(z0) ? (
+z1 = q81(z0);
+z1 == 6 || z1 == 7 ? ( q7[z0 * 8 + 2] = 0 ) :
+z1 == 5 ? q7d(z0, q65(z0, 0)) :
+z1 == 2 ? q7d(z0, 0) :
+z1 == 1 ? q7d(z0, q37(z0, 2) ? 63.5 : (q37(z0, 4) ? 127 : 0));
+);
+z0 += 1;
+);
+);
+function q5a(z0, z1)
+local(z2, z3, z4)
+(
+q13(z0, z1);
+q5d();
+q5b(1, "Add knob");
+q5b(2, "Add toggle");
+q5b(15, "Add radio");
+q5b(18, "Add GR meter");
+q5g(">Add GR bar...");
+q5b(20, "Horizontal");
+q5b(21, "<Vertical");
+q5b(11, "Add separator");
+q5b(13, "Add title");
+q5f();
+q5b(3, q2z ? "!Edit mode" : "Edit mode");
+q5b(4, q7e ? "!Show names" : "Show names");
+q5b(16, q7f ? "!Show knob rings" : "Show knob rings");
+q1m(q3s);
+q1k(q1d);
+q1l(q27, 4);
+q5b(43, "Fit grid to elements");
+q9w();
+q5f();
+q5b(7, "Copy layout & links");
+q5b(8, q23() ? "Paste layout & links" : "#Paste layout & links");
+q5f();
+z3 = qb9();
+z3 ? ( sprintf(#q7t, "Copy selection  (%d)", z3); q5b(40, #q7t); )
+: q5b(0, "#Copy selection");
+z3 = qay();
+z3 ? ( sprintf(#q7t, "Paste elements  (%d)", z3); q5b(41, #q7t); )
+: q5b(0, "#Paste elements");
+q5b(42, qb9() ? "Clear selection" : "#Clear selection");
+q5f();
+q4w() ? (
+sprintf(#q7t, "#Preset links: %d on %s", q4s(), q4u());
+q5b(0, #q7t);
+q5b(22, "Forget preset links");
+) : (
+q5b(0, q4q ? "#Preset links: forgotten"
+: "#Preset links: none yet");
+q5b(23, q95() ? "Capture links now"
+: "#Capture links now");
+);
+q5f();
+q5b(24, "Reset All Positions");
+q5b(9,  "Resend all CCs");
+q5b(10, "Clear all");
+z2 = q5e(z0, z1);
+z2 == 1999 ? q5s(-2) :
+z2 >= 9000 && z2 < 9100 ? qaa(z2 - 9000) :
+z2 >= 1000 && z2 < 2000 ? ( q1d = z2 - 1000; ) :
+z2 >= 5000 && z2 < 6000 ? ( q27 = z2 - 5000; q6d(); ) :
+z2 >= 7000 && z2 < 8000 ? ( q7a(z2 - 7000) ) :
+z2 ==  1 ? qu(1) :
+z2 ==  2 ? qu(2) :
+z2 == 15 ? qu(5) :
+z2 == 18 ? qu(6) :
+z2 == 20 ? qu(7) :
+z2 == 21 ? ( z3 = qu(7); z3 >= 0 ? q7w(z3, 8); ) :
+z2 == 11 ? qu(3) :
+z2 == 13 ? qu(4) :
+z2 ==  3 ? ( q2z = q2z ? 0 : 1 ) :
+z2 ==  4 ? ( q7e = q7e ? 0 : 1 ) :
+z2 == 16 ? ( q7f = q7f ? 0 : 1 ) :
+z2 ==  7 ? q22() :
+z2 ==  8 ? q24() :
+z2 == 43 ? qbe() :
+z2 == 40 ? qax(-1) :
+z2 == 41 ? qb0(qz, q11) :
+z2 == 42 ? qb6() :
+z2 == 22 ? q4t() :
+z2 == 23 ? q4r() :
+z2 == 24 ? q6j() :
+z2 ==  9 ? ( z4 = 0; loop(qi, qe[z4] = -1; z4 += 1;); ) :
+z2 == 10 ? ( z4 = 0; loop(qi, q83(z4) ? q2h(z4); z4 += 1;); );
+q10 = 0;
+);
+function q6i()
+local(z0, z1, z2, z3)
+(
+z1 = q6h >= 2 * qi ? qag(q6h - 2 * qi) :
+q6h >= qi     ? q5n(q6h - qi)
+: q5m(q6h);
+q6g ? (
+gmem[q9i] = 1;
+gmem[q9i + 1] = get_host_placement() + 1;
+gmem[q9i + 2] = q6h;
+gmem[q9i + 3] = strlen(z1);
+z2 = 0; loop(strlen(z1), gmem[q9i + 4 + z2] = str_getchar(z1, z2); z2 += 1; );
+q9j = q7v;
+q6g = 0;
+);
+z0 = gmem[q9i];
+z3 = ( gmem[q9i + 1] == get_host_placement() + 1 &&
+gmem[q9i + 2] == q6h );
+!z3 ? (
+q6h = -1;
+) :
+z0 == 2 ? (
+strcpy(z1, "");
+z2 = 0; loop(gmem[q9i + 3], sprintf(#q7t, "%c", gmem[q9i + 4 + z2]); strcat(z1, #q7t); z2 += 1; );
+q6h = -1;
+q21 = 1;
+gmem[q9i] = 0;
+) :
+z0 == 3 ? (
+q6h = -1;
+gmem[q9i] = 0;
+) : (
+( z0 == 1 && q7v - q9j > 5 ) ? (
+q6h < 2 * qi ? (
+q4i   = 2;
+q4j = q6h % qi;
+q4k = q7v;
+);
+q6h  = -1;
+z3 ? ( gmem[q9i] = 0 );
+);
+);
+);
+function q2q(z0, z1)
+local(z2, z3, z4, z5)
+(
+z1 == 1 ? strcpy(#q7o, "LINKED") :
+z1 == 2 ? strcpy(#q7o, "NO ANSWER") :
+z1 == 3 ? strcpy(#q7o, "REFUSED") :
+strcpy(#q7o, "CLEARED");
+gfx_setfont(2, "Arial", max(9, floor(20 * q82 + 0.5)));
+gfx_measurestr(#q7o, q80, q7j);
+z2 = q80 + 12 * q82;
+z3 = q7j + 6 * q82;
+z4 = q2d(z0) - z2 * 0.5;
+z5 = q2e(z0) - q5y(z0) - z3 - 4 * q82;
+z4 + z2 > gfx_w ? ( z4 = gfx_w - z2 );
+z4 < 0 ? ( z4 = 0 );
+z5 < 0 ? ( z5 = q2e(z0) + q5y(z0) + 4 * q82 );
+gfx_r = 0.07; gfx_g = 0.07; gfx_b = 0.08; gfx_a = 0.93;
+gfx_rect(z4, z5, z2, z3);
+z1 == 1 ? ( gfx_r = 0.35; gfx_g = 0.9; gfx_b = 0.45; ) :
+( gfx_r = 1;    gfx_g = 0.5; gfx_b = 0.35; );
+gfx_a = 1;
+gfx_rect(z4, z5, z2, z3, 0);
+gfx_x = z4 + 6 * q82; gfx_y = z5 + 3 * q82;
+gfx_drawstr(#q7o);
+);
+function q2v(z0)
+local(z1, z2, z3, z4, z5, z6, z7, z8, z9)
+(
+z2 = min(23, gmem[qn + 2]);
+z2 > 0 ? (
+strcpy(#q7o, "");
+z1 = 0;
+loop(z2,
+sprintf(#q7t, "%c", gmem[qn + 4 + z1]);
+strcat(#q7o, #q7t);
+z1 += 1;
+);
+gfx_setfont(2, "Arial", max(9, floor(30 * q82 + 0.5)));
+gfx_measurestr(#q7o, q80, q7j);
+z3 = q80 + 14 * q82;
+z4 = q7j + 8 * q82;
+z7 = q2d(z0);
+z8 = q2e(z0);
+z9  = q5y(z0);
+z5 = z7 - z3 * 0.5;
+z6 = z8 - z9 - z4 - 4 * q82;
+z5 + z3 > gfx_w ? ( z5 = gfx_w - z3 );
+z5 < 0 ? ( z5 = 0 );
+z6 < 0 ? ( z6 = z8 + z9 + 4 * q82 );
+gfx_r = 0.07; gfx_g = 0.07; gfx_b = 0.08; gfx_a = 0.93;
+gfx_rect(z5, z6, z3, z4);
+gfx_r = 0.55; gfx_g = 0.55; gfx_b = 0.58; gfx_a = 1;
+gfx_rect(z5, z6, z3, z4, 0);
+gfx_r = 1; gfx_g = 0.92; gfx_b = 0.55;
+gfx_x = z5 + 7 * q82; gfx_y = z6 + 4 * q82;
+gfx_drawstr(#q7o);
+gfx_a = 1;
+);
+);
+function qa3()
+local(z0, z1, z2, z3, z4, z5)
+(
+qai() ? (
+z3 = qae();
+z2 = qah();
+z5 = max(1, floor(2 * q82 + 0.5));
+q7b(q1d);
+gfx_a = 1;
+gfx_rect(0, 0, q9s(), z3);
+gfx_setfont(1, "Arial", max(10, floor(18 * q82 + 0.5)), 'b');
+z0 = 0;
+loop(qa8,
+z1   = floor(z0 * z2);
+z4 = z0 == qac;
+q1e ? ( gfx_r = 0; gfx_g = 0; gfx_b = 0; )
+: ( gfx_r = 1; gfx_g = 1; gfx_b = 1; );
+gfx_a = z4 ? 0.18 : 0.06;
+gfx_rect(z1 + 1, 1, floor(z2) - 2, z3 - 2);
+qaf(z0);
+gfx_measurestr(#q7u, q80, q7j);
+gfx_a = z4 ? 1 : 0.55;
+gfx_x = z1 + (z2 - q80) * 0.5;
+gfx_y = (z3 - q7j) * 0.5;
+gfx_drawstr(#q7u);
+z0 += 1;
+);
+gfx_r = 1; gfx_g = 0.85; gfx_b = 0.2; gfx_a = 1;
+gfx_rect(floor(qac * z2) + 1, z3 - z5, floor(z2) - 2, z5);
+);
+);
+function q2t()
+local(z0, z1)
+(
+z0 = q56();
+z0 > 0 ? (
+z1 = max(2, 4 * q82);
+gfx_r = 1; gfx_g = 1; gfx_b = 1;
+gfx_a = 0.15; gfx_rect(q9s() - z1, 0, z1, gfx_h);
+gfx_a = q2k == 5 ? 0.75 : 0.50;
+gfx_rect(q9s() - z1, q7l(), z1, q7k());
+gfx_a = 1;
+);
+);
+function q45()
+local(z0)
+(
+q10 = 0; qz = 0; q11 = 0; q12 = 0;
+qi   = 50;
+qbj = 0;
+z0 = 0; loop(qi, qbj += 2 ^ z0; z0 += 1;);
+q7    = 0;
+qe = 512;
+qj    = 600;
+qg   = 800;
+q0    = 8192;
+q1 = 8704;
+q2   = 8768;
+q3  = 9792;
+q4   = 10880;
+q9t   = 11008;
+qat   = 262144;
+qau   = 1000;
+memset(qau, 0, 64);
+qb5 = -1; qb7 = 0; qb8 = 0;
+qk  = 4;
+q9u  = 4;
+qp    = 1200;
+qq   = 1264;
+qr  = 1328;
+qd   = 1392;
+qc   = 1456;
+memset(qp, 0, 320);
+z0 = 0; loop(64, qc[z0] = qbm(); z0 += 1;);
+qs   = 1776;
+memset(qs, 0, 64);
+q9   = 1520;
+z0 = 0; loop(qi, q9[z0] = -1; z0 += 1;);
+q6   = 1712;
+z0 = 0; loop(64, q6[z0] = -1; z0 += 1;);
+q1y = -999;
+q1x = 0;
+qb    = 4096;
+qo    = 61440;
+q5   = 16384;
+q8   = 32768;
+qh   = 12288;
+qf   = 65536;
+qt   = 131072;
+q9d = 0;
+q9b = -1;
+q4q = 0;
+q97 = 1;
+q9e   = -999;
+q9f        = 0;
+q9g       = 0;
+q9h  = qi;
+q4g    = -1;
+q4h   = 0;
+q4o     = 0;
+q4m  = 0;
+q4l = -1;
+q4i    = 0;
+q4j  = -1;
+q4k  = -99;
+qm   = 49152;
+qn   = 49160;
+q9i   = 49200;
+ql   = 49232;
+q5r   = -1;
+q5q = 0;
+q5t    = 0;
+q7q = 0; q7r = -1; q7p = qbm();
+q7z   = -1;
+q41 = 0; q40 = 0;
+q8d = 0.03;
+q8j = 0;
+qbi = 1;
+qbh = 0;
+q32     = 0;
+q6f     = exp(-1 / (max(1, srate) * 0.030));
+q57 = 0;
+q1f     = 0;
+qw = -2.35; qx = 2.35; qy = qx - qw;
+q6r = 36;
+gfx_ext_retina = 1;
+q82 = 1;
+q1e = 0;
+q28 = 40;
+q2i = -1; q2k = 0;
+q4c = 0; q3z = -1;
+q4e = 0; q4d = -1;
+q9k = 1900;
+q9o();
+qam   = 0;
+qao = 0;
+q9q = 0;
+q9r   = 0;
+q6h = -1; q6g = 0; q9j = 0;
+q6v = 0; q70 = 0; q6u = 0;
+qal = 900;
+memset(qg, 0, 16);
+q3a = 0;
+q39 = 0;
+q7v = time_precise();
+q21 = 1;
+q43 = 1;
+q53 != 0x5B0100 ? (
+q53 = 0x5B0100;
+q1d = 7; q2g = 7; q2f = 0;
+q2z = 0; q7e = 1; q7f = 1; q3s = 1;
+q27 = 2;
+qa8 = 0; qac = 0;
+z0 = 0; loop(q9u, strcpy(qag(z0), ""); z0 += 1;);
+memset(q7, 0, qi * 8);
+z0 = 0; loop(qi, strcpy(q5m(z0), ""); z0 += 1;);
+q4t();
+qbf = 18; qbg = 40;
+qu(1);
+qu(1);
+qbe();
+);
+q43 = 0;
+z0 = 0; loop(qi, qe[z0] = -1; z0 += 1;);
+);
+function q6t(z0, z1)
+local(z2)
+(
+z2 = abs(z0);
+abs(z1) > z2 ? ( z2 = abs(z1) );
+q32 = z2 > q32 ? z2 : q32 * q6f;
+);
+function q1g()
+local(z0, z1, z2, z3, z4, z5, z6, z7)
+(
+q7z = get_host_placement(q41, q40);
+q1f += 1;
+q1f > 10000000 ? ( q1f = 1 );
+z6 = 0; q9g = 0;
+z0 = 0;
+loop(qi,
+q7[z0 * 8] > 0 ? (
+q9g = z0 + 1;
+( q81(z0) == 6 && q8k(z0) == 1 ) ? ( z6 = 1 );
+);
+z0 += 1;
+);
+q57 = z6;
+!z6 ? ( q32 = 0 );
+z3 = q5 + max(0, min(255, q7z + 1)) * 64;
+z4 = q8 + max(0, min(255, q7z + 1)) * 64;
+q1x += 1;
+( q7z != q1y || q1x > 256 ) ? (
+z0 = 0;
+loop(64, q6[z0] = -1; z0 += 1;);
+q1y = q7z;
+q1x = 0;
+);
+q7z != q9e ? ( q9b = -1 );
+q9a();
+( q97 || q7z != q9e ) ? (
+q9c();
+q9e   = q7z;
+q97 = 0;
+);
+z7 = max(q9g, q9h);
+q9h = q9g;
+z0 = 0;
+loop(z7,
+( q47(z0) && q4x(z0) ) ? (
+q6[z0] != 0 ? ( gmem[z3 + z0] = 0; q6[z0] = 0; );
+qe[z0]  = max(0, min(127, floor(q84(z0) + 0.5)));
+) :
+q47(z0) ? (
+z2 = q7[z0 * 8 + 2];
+z5 = 1 + q7[z0 * 8 + 1] + (z2 + 1) * 256;
+q6[z0] != z5 ? ( gmem[z3 + z0] = z5; q6[z0] = z5; );
+z1 = gmem[z4 + z0];
+( z1 > 0 && z1 != q9[z0] && q2i != z0 ) ? (
+q9[z0] = z1;
+z1 -= 1;
+slider(z0 + 1) = max(0, min(127, z1));
+qe[z0]   = max(0, min(127, floor(z1 + 0.5)));
+);
+z1 = max(0, min(127, floor(q84(z0) + 0.5)));
+z1 != qe[z0] ? (
+midisend(0, 0xB0 + max(0, z2), q7[z0 * 8 + 1], z1);
+qe[z0] = z1;
+);
+) : (
+q6[z0] != 0 ? ( gmem[z3 + z0] = 0; q6[z0] = 0; );
+);
+z0 += 1;
+);
+);
+function q78()
+local(z0, z1)
+(
+q77 = 16;
+file_var(0, q77);
+z1 = q77 >= 12 ? qi : (q77 >= 11 ? 40 : 32);
+file_mem(0, q7, z1 * 8);
+z1 < qi ? ( memset(q7 + z1 * 8, 0, (qi - z1) * 8) );
+file_var(0, q1d);
+file_var(0, q2g);
+file_var(0, q2f);
+q77 >= 2 ? (
+file_var(0, q27);
+file_var(0, q6s);
+) : (
+file_var(0, q3r);
+q5l = 1;
+);
+q77 >= 3 ? (
+file_var(0, q7e);
+z0 = 0; loop(z1, file_string(0, q5m(z0)); z0 += 1;);
+z0 = z1; loop(qi - z1, strcpy(q5m(z0), ""); z0 += 1;);
+) : (
+q7e = 1;
+z0 = 0;
+loop(qi, strcpy(q5m(z0), q83(z0) ? "PARAM" : ""); z0 += 1;);
+);
+q77 >= 7 ? (
+z0 = 0; loop(z1, file_string(0, q5n(z0)); z0 += 1;);
+z0 = z1; loop(qi - z1, strcpy(q5n(z0), ""); z0 += 1;);
+) : (
+z0 = 0; loop(qi, strcpy(q5n(z0), ""); z0 += 1;);
+);
+q77 >= 8 ? (
+file_var(0, q7f);
+) : (
+q7f = 1;
+);
+q77 >= 10 ? (
+file_var(0, q3s);
+) : q77 >= 9 ? (
+file_var(0, q7g);
+q3s = q7g ? 0 : 1;
+) : (
+q3s = 1;
+);
+q3s = max(0, min(qk, floor(q3s + 0.5)));
+q77 >= 13 ? (
+file_var(0, q4v);
+file_string(0, q4u());
+file_mem(0, q51(), z1);
+z1 < qi ? ( memset(q51() + z1, 0, qi - z1) );
+) : (
+q4v = 0;
+strcpy(q4u(), "");
+memset(q51(), 0, 64);
+);
+q97 = 1;
+q77 >= 15 ? (
+file_var(0, qa8);
+file_var(0, qac);
+z0 = 0; loop(4, file_string(0, qag(z0)); z0 += 1;);
+) : (
+qa8 = 0; qac = 0;
+z0 = 0; loop(4, strcpy(qag(z0), ""); z0 += 1;);
+);
+qa8 = floor(qa8 + 0.5);
+qa8 = qa8 >= 2 ? min(q9u, qa8) : 0;
+qac  = max(0, min(max(0, qa8 - 1), floor(qac + 0.5)));
+q77 >= 16 ? (
+file_var(0, qbf);
+file_var(0, qbg);
+qbf = max(18, qbf);
+qbg = max(40, qbg);
+) : (
+qbe();
+);
+q77 < 4 ? ( q5j = 1 );
+q77 < 5 ? ( q5i = 1 );
+q77 < 6 ? ( q5k = 1 );
+q77 < 14 ? ( q5h = 1 );
+q53 = 0x5B0100;
+q21 = 1;
+);
+function q4p()
+local(z0, z1, z2)
+(
+z1 = time_precise();
+q4g >= 0 ? (
+z0 = max(0, min(255, q7z + 1));
+gmem[qh]     = z0;
+gmem[qh + 1] = q4g;
+gmem[qh + 2] = q4m;
+gmem[qh + 3] = q4h;
+( gmem[qh + 5] != q4l &&
+gmem[qh + 6] == z0 && gmem[qh + 7] == q4g &&
+gmem[qh + 8] == q4m ) ? (
+q4l = gmem[qh + 5];
+q4i    = gmem[qh + 4];
+q4j  = q4g;
+q4k  = z1;
+q4i == 1 ? q99(q4g) :
+q4i == 4 ? ( q4z(q4g); q97 = 1; );
+q4g    = -1;
+gmem[qh]    = -1;
+) : (
+z1 - q4o > 25 ? (
+q4i   = 2;
+q4j = q4g;
+q4k = z1;
+q4g   = -1;
+gmem[qh]   = -1;
+);
+);
+);
+q4g >= 0 ? (
+z2 = z1 * 3;
+( z2 - floor(z2) ) < 0.5 ? q2n(q4g);
+);
+( q4i > 0 && q4j >= 0 && z1 - q4k < 1.6 ) ?
+q2q(q4j, q4i);
+);
+function q3e()
+local(z0, z1, z2, z3, z4, z5, z6, z7, z8, z9, z10, z11, z12, z13, z14, z15, z16)
+(
+z16 = q9l();
+q9n(z16);
+qbi = 1;
+q1w();
+z16 ? (
+q9q = gfx_w / max(0.001, q82);
+q9r   = gfx_w;
+) : (
+q9r = q9q > 0 ? min(gfx_w, q9q * q82) : gfx_w;
+);
+z5 = time_precise();
+q8d = max(0.001, min(0.10, z5 - q8j));
+q8j = z5;
+q21 ? ( q6e(); q21 = 0; );
+q5l ? (
+z0 = 0;
+loop(qi,
+q83(z0) ? (
+q7[z0 * 8 + 3] = floor(q7[z0 * 8 + 3] * q27);
+q7[z0 * 8 + 4] = floor(q7[z0 * 8 + 4] * 4);
+);
+z0 += 1;
+);
+q5l = 0;
+);
+q5j ? (
+z0 = 0;
+loop(qi,
+( q83(z0) && q7[z0 * 8 + 5] < 1 ) ? (
+q7[z0 * 8 + 5] = max(5, floor(q7[z0 * 8 + 5] * 80 + 0.5));
+);
+z0 += 1;
+);
+q5j = 0;
+);
+q5i ? (
+z0 = 0;
+loop(qi,
+q83(z0) ? (
+q7[z0 * 8 + 3] = q7[z0 * 8 + 3] * 2;
+q7[z0 * 8 + 4] = q7[z0 * 8 + 4] * 2;
+);
+z0 += 1;
+);
+q6d();
+q5i = 0;
+);
+q5k ? (
+z0 = 0;
+loop(qi,
+q83(z0) ? (
+q7[z0 * 8 + 3] = q7[z0 * 8 + 3] * 2;
+q7[z0 * 8 + 4] = q7[z0 * 8 + 4] * 2;
+);
+z0 += 1;
+);
+q6d();
+q5k = 0;
+);
+q5h ? (
+z0 = 0;
+loop(qi,
+q83(z0) ? (
+q7[z0 * 8 + 3] = q7[z0 * 8 + 3] * 2;
+q7[z0 * 8 + 4] = q7[z0 * 8 + 4] * 2;
+);
+z0 += 1;
+);
+q6d();
+q5h = 0;
+);
+q9f = 0; z0 = 0;
+loop(qi, q7[z0 * 8] > 0 ? ( q9f = z0 + 1 ); z0 += 1;);
+q1v();
+q1u();
+qan();
+q3v();
+z1 = mouse_x; z2 = mouse_y;
+gfx_a = 1;
+q7b(q1d);
+gfx_rect(0, 0, gfx_w, gfx_h);
+q2z ? (
+gfx_r = 1; gfx_g = 1; gfx_b = 1;
+z0 = 0;
+loop(q54() + 1,
+gfx_a = ((z0 + 1) & 7) == 0 ? 0.16 : ( ((z0 + 1) & 3) == 0 ? 0.10 : 0.05 );
+z12 = (z0 + 1) * q42();
+gfx_line(z12, 0, z12, gfx_h, 0);
+z0 += 1;
+);
+z0 = 0;
+loop(128,
+z12 = q7x() + z0 * q3w() - q6v;
+( z12 >= 0 && z12 <= gfx_h ) ? (
+gfx_a = (z0 & 7) == 0 ? 0.16 : ( (z0 & 3) == 0 ? 0.10 : 0.05 );
+gfx_line(0, z12, q2a(), z12, 0);
+);
+z0 += 1;
+);
+gfx_a = 1;
+);
+z0 = 0;
+loop(q9f,
+q83(z0) ? q2m(z0);
+z0 += 1;
+);
+qa3();
+q3z = qad(z1, z2) >= 0 ? -1 : q5v(z1, z2);
+q5r != -1 ? q5u();
+q6h >= 0 ? (
+( q6h < 2 * qi && !q83(q6h % qi) ) ?
+( q6h = -1 ) : q6i();
+(mouse_cap & 3) && !(q4c & 3) ? (
+(abs(z1 - gfx_w * 0.5) > 120 * q82 || abs(z2 - gfx_h * 0.5) > 40 * q82) ? (
+q6h = -1;
+q21 = 1;
+);
+);
+);
+(mouse_cap & 2) && !(q4c & 2) ? (
+z13 = qad(z1, z2);
+z13 >= 0 ? qa7(z13, z1, z2) : (
+z4 = q5v(z1, z2);
+z4 >= 0 ? q59(z4, z1, z2) : q5a(z1, z2);
+);
+q2i = -1; q2k = 0; qb5 = -1;
+qbi = 1;
+);
+(mouse_cap & 1) ? (
+!(q4c & 1) ? (
+q4f();
+q71();
+( q56() > 0 && z1 >= q9s() - max(3, 6 * q82) ) ? (
+z13 = q7l();
+( z2 >= z13 && z2 <= z13 + q7k() ) ? (
+q6u = z2 - z13;
+) : (
+q6u = q7k() * 0.5;
+q6y(q6w(z2 - q6u));
+);
+q2i = 0; q2k = 5;
+) :
+( qad(z1, z2) >= 0 ) ? (
+qab(qad(z1, z2));
+q2i = -1; q2k = 0;
+q4d = -1;
+) : (
+z4 = q5v(z1, z2);
+( !q2z && z4 >= 0 && q81(z4) == 6 &&
+q8a(z4, z1, z2) ) ? (
+q8m(z4);
+q2i = -1; q2k = 0;
+q4d = -1;
+z4 = -2;
+);
+( !q2z && z4 >= 0 && q81(z4) == 6 &&
+q8u(z4, z1, z2) ) ? (
+z5 = time_precise();
+( z4 == q4d && z5 - q4e < 0.35 ) ? (
+q7[z4 * 8 + 2] = 0;
+q2i = -1; q2k = 0;
+) : (
+q2i  = z4;
+q2k = 8;
+q6c     = z2;
+q6a  = q3p(z4);
+);
+q4d = z4; q4e = z5;
+z4 = -2;
+);
+( !q2z && z4 >= 0 && q5p(z4) ) ? ( z4 = -1 );
+( !q2z && z4 == -1 ) ? ( z4 = q5w(z1, z2) );
+z4 == -2 ? 0 :
+z4 >= 0 ? (
+z5 = time_precise();
+z6 = (z4 == q4d) && (z5 - q4e < 0.35);
+q4d = z4; q4e = z5;
+q2z ? (
+q2i  = z4;
+q2k = ( (mouse_cap & 8) && q81(z4) != 3 ) ? 3 : 2;
+q6c     = z2;
+q69    = q7[z4 * 8 + 5];
+qb5 = (mouse_cap & 8) ? z4 : -1;
+qb7   = z1; qb8 = z2;
+( !(mouse_cap & 8) && !qau[z4] ) ? qb6();
+) : (
+q5p(z4) ? 0 :
+q81(z4) == 5 ? (
+q7d(z4, q65(z4, q5z(z4, z1, z2)));
+q2i = z4; q2k = 7;
+) :
+q81(z4) == 2 ? (
+q37(z4, 1) ?
+q7d(z4, 127) :
+q7d(z4, q84(z4) >= 64 ? 0 : 127);
+q2i = z4; q2k = 4;
+) : (
+z6 ? q7d(z4, q37(z4, 2) ? 63.5 : (q37(z4, 4) ? 127 : 0)) : (
+q2i  = z4;
+q2k = 1;
+q6c     = z2;
+q6b   = q85(z4);
+q67  = (mouse_cap & 4) ? 1 : 0;
+);
+);
+);
+) : (
+( q2z && !(mouse_cap & 8) ) ? qb6();
+q56() > 0 ? (
+q2i    = 0;
+q2k   = 6;
+q6c       = z2;
+q68  = q6v;
+);
+);
+);
+) : (
+q2i >= 0 ? (
+z8 = qv(q2i);
+( qb5 >= 0 &&
+( abs(z1 - qb7) > qba() ||
+abs(z2 - qb8) > qba() ) ) ? ( qb5 = -1 );
+q2k == 1 ? (
+z7 = (mouse_cap & 4) ? 1 : 0;
+z7 != q67 ? (
+q6c    = z2;
+q6b  = q85(q2i);
+q67 = z7;
+);
+z3 = q4a(z7) / q82;
+z12 = max(0, min(127, q6b + (q6c - z2) * z3));
+q7d(q2i, z12);
+) :
+q2k == 2 ? (
+qb5 < 0 ? (
+z9 = q25(z1);
+z10 = q81(q2i) == 3 ? q6p(z2) : q6o(z2);
+( z9 != z8[3] || z10 != z8[4] ) ? (
+qau[q2i] ? (
+qbc(z9 - z8[3], z10 - z8[4]) ?
+qbd(z9 - z8[3], z10 - z8[4]);
+) : (
+q1z(z9, z10, q2i, q9y()) < 0 ? (
+z8[3] = z9; z8[4] = z10;
+);
+);
+);
+);
+) :
+q2k == 3 ? (
+qb5 < 0 ? (
+z8[5] = max(5, min(64, floor(q69
++ (q6c - z2) * 0.25 / q82
++ 0.5)));
+);
+) :
+q2k == 5 ? (
+q6x(q6w(z2 - q6u));
+) :
+q2k == 6 ? (
+q6x(q68 - (z2 - q6c));
+) :
+q2k == 7 ? (
+q7d(q2i,
+q65(q2i, q5z(q2i, z1, z2)));
+) :
+q2k == 8 ? (
+z8[2] = max(-6, min(6,
+floor((q6a + (q6c - z2) * 0.1 / q82)
+* 2 + 0.5) * 0.5));
+);
+);
+);
+) : (
+(q4c & 1) && q2i >= 0 ? (
+( q2k == 4 && q37(q2i, 1) ) ?
+q7d(q2i, 0);
+qb5 >= 0 ? qbb(qb5);
+);
+qb5 = -1;
+q2i = -1; q2k = 0;
+);
+qbi = 1;
+( mouse_wheel && q2i >= 0 ) ? ( mouse_wheel = 0 );
+mouse_wheel ? (
+z12 = mouse_wheel / 120;
+abs(z12) < 0.05 ? ( z12 = sign(mouse_wheel) * 0.05 );
+( (mouse_cap & 4) || q56() <= 0 ) ? (
+(!q2z && q3z >= 0 && q81(q3z) == 1) ? (
+q9z(q3z) >= 2 ? (
+q7d(q3z,
+qa2(q3z,
+qa0(q3z)
++ sign(mouse_wheel) * ((mouse_cap & 8) ? 5 : 1)));
+) : (
+q7d(q3z, q84(q3z) + sign(mouse_wheel) * ((mouse_cap & 8) ? 5 : 1));
+);
+);
+) : (
+q6y(q72() - z12 * q6r * ((mouse_cap & 8) ? 5 : 2));
+);
+mouse_wheel = 0;
+);
+z15 = -1;
+!q2z ? (
+( q2i >= 0 &&
+( q2k == 1 || q2k == 4 || q2k == 7 ) ) ?
+( z15 = q2i ) :
+( !q2k && q3z >= 0 && q47(q3z) &&
+z1 >= 0 && z1 < gfx_w && z2 >= 0 && z2 < gfx_h ) ?
+( z15 = q3z );
+);
+z14 = z15 >= 0;
+z14 ? (
+z12 = max(0, min(255, q7z + 1));
+gmem[qm]     = z12;
+gmem[qm + 1] = z15;
+( gmem[qn] == z12 && gmem[qn + 1] == z15 ) ? (
+gmem[qn + 3] != q7r ?
+( q7r = gmem[qn + 3]; q7p = 0; ) :
+( q7p += q8d );
+q7p < qbl() ? q2v(z15);
+);
+) : (
+q7q ? ( gmem[qm] = -1 );
+q7p = qbm();
+);
+q7q = z14;
+q4p();
+q2z ? (
+z0 = 0;
+loop(q9f,
+( q83(z0) && qau[z0] && q86(z0) ) ? qaw(z0);
+z0 += 1;
+);
+q3z >= 0 ? q2n(q3z);
+gfx_setfont(1, "Arial", max(6, floor(11 * q82 + 0.5)));
+gfx_r = 1; gfx_g = 0.85; gfx_b = 0.2; gfx_a = 1;
+gfx_x = 3 * q82; gfx_y = 2 * q82;
+gfx_drawstr("EDIT");
+) : (
+qb6();
+);
+q2t();
+q9x() == 0 ? (
+gfx_setfont(1, "Arial", max(6, floor(11 * q82 + 0.5)));
+gfx_r = 1; gfx_g = 1; gfx_b = 1; gfx_a = 0.6;
+gfx_x = 4 * q82; gfx_y = gfx_h / 2 - 12 * q82;
+gfx_drawstr("Right-click");
+gfx_x = 4 * q82; gfx_y = gfx_h / 2;
+gfx_drawstr("to add");
+gfx_a = 1;
+);
+q4c = mouse_cap;
+q9p(z16);
+);

@@ -37,9 +37,9 @@ StripTease is freeware. You may use it for your personal workflow. Selling, comm
 | --- | --- |
 | `StripTease Panel 050 / 100 / 150 / 200 / 300 / 400 / 600 px` | The seven JSFX panels. Identical engine, only the fixed height changes. |
 | `striptease_panel.jsfx-inc` | The shared engine imported by all seven panels. Not loaded directly. |
-| `StripTease.jsfx` (*StripTease GR*) | Superseded — the panel now measures Gain Reduction on its own (section 6). Still shipped so that older projects using it keep working; there is no reason to reach for it in a new one. |
+| `StripTease.jsfx` (*StripTease GR*) | Audio JSFX that **measures** Gain Reduction for compressors that don't report it to REAPER. |
 | `StripTease System.lua` | Background script. Required for Gain Reduction, Direct Link, renaming, custom colors and preset sharing. |
-| `StripTease Check.lua` | Diagnostic script: tells you how each plugin's Gain Reduction is read, or why it is not. |
+| `StripTease Check.lua` | Diagnostic script: tells you which plugins report their Gain Reduction natively. |
 | `FXChains/*.RfxChain` | Seven ready-made FX chains (panel + plugin, already mapped). |
 
 ### Installation
@@ -62,7 +62,7 @@ The easiest way to install and keep StripTease up to date is via ReaPack.
 
 Run it once; it stays in the background and handles everything the JSFX cannot do by itself:
 
-*   Finds every compressor or gate on your tracks that reports its gain reduction — to REAPER through `GainReduction_dB`, or through a parameter named after it, or through one it learned to read — and feeds the GR meters. For a compressor that reports nothing, it tells the panel to measure the reduction itself when the chain allows it.
+*   Finds every compressor or gate on your tracks that reports its gain reduction — to REAPER through `GainReduction_dB`, or through a parameter named after it — and feeds the GR meters.
 *   Maintains the **Direct Links** between panel elements and real plugin parameters (both directions).
 *   Rebuilds links from **recipes** when a preset, track template or FX chain is loaded.
 *   Serves the **Rename** dialog, the **Palette** color picker, and the value pop-up shown when you hover or tweak a linked control.
@@ -74,7 +74,7 @@ With SWS installed you can attach it to the *Global Startup Action* so it launch
 
 ### StripTease Check.lua
 
-If a compressor's Gain Reduction doesn't show up on a meter, run this script while the project is playing. It lists all plugins on the track and tells you how each one's Gain Reduction is read — reported natively, read through a parameter, or measured by the panel — and, for a plugin that reports nothing, why the panel cannot stand in for it. When the panel does measure, it also says whether that happens at the audio rate through a container or through the slower track-meter fallback.
+If a compressor's Gain Reduction doesn't show up on a meter, run this script while the project is playing. It lists all plugins on the track and tells you whether each one reports its Gain Reduction natively. If it doesn't, use the *StripTease GR* JSFX described in section 6.
 
 ### Panels
 
@@ -344,41 +344,16 @@ For gain reduction, the meter reads a single value per source: **Compressor 1**,
 
 2. **Through a parameter named after the reduction** — `GainReduction_dB` is only served by the VST hosting side of REAPER: by REAPER's own VST2 extension, and by the VST3 `IGainReductionInfo` interface. **A JSFX never answers it.** A JSFX that sets `ext_gr_meter` does feed REAPER's own track meter — you can watch the reduction move next to the fader — but that path is internal to REAPER's JSFX module and has no script side at all. What REAPER shows there, it lends to no one.
 
-   The one channel a JSFX does share with a script is a parameter. So StripTease also accepts, on a plugin that answers nothing, **a parameter whose name contains *gain reduction*, *GR readout* or *GR meter*, and whose range is graduated in dB** (more than one unit wide). Both conditions together: a control that happens to carry such a name is rarely graduated in dB, so the pair leaves no room for doubt and the readout is taken as is.
+   The one channel a JSFX does share with a script is a parameter. So StripTease also accepts, on a plugin that answers nothing, **a parameter whose name contains *gain reduction*, *GR readout* or *GR meter*, and whose range is graduated in dB** (more than one unit wide). Both conditions together: a control that happens to carry such a name is rarely graduated in dB, and a normalized 0..1 parameter cannot be a dB readout anyway.
 
-   **Learned readouts.** Plenty of plugins do publish their reduction, but under a name the rule above cannot vouch for — *Redux*, *Reduction*, *Compression*, *GR* — and, more often than not, as a normalized 0..1 parameter that spells its dB out only in the displayed text. A name like that proves nothing on its own, so StripTease watches the candidate instead: while the track plays, a reduction readout climbs when the signal gets loud and returns to rest when it goes quiet, which no ordinary control does on its own. A parameter that behaves that way is adopted, and **what is learned is remembered per plugin type** — every instance, in every project afterwards, is read straight away. Automated, linked or modulated parameters are excluded from the start, and a candidate that never settles the question simply stays unused.
+   Nothing to set up — the plugin is picked up as *Compressor n* like any other, and `StripTease Check.lua` marks it `[via parameter: ...]`. The value is taken in absolute value, so it makes no difference whether the plugin counts its reduction downwards (−6) or upwards (6); readings beyond 60 dB are clamped. If you write your own JSFX, exposing one such parameter alongside `ext_gr_meter` is all it takes.
 
-   Nothing to set up in either case — the plugin is picked up as *Compressor n* like any other, and `StripTease Check.lua` marks it `[via parameter: ...]`, with `(learned)` when it came from observation. The value is taken in absolute value, so it makes no difference whether the plugin counts its reduction downwards (−6) or upwards (6); readings beyond 60 dB are clamped. If you write your own JSFX, exposing one such parameter alongside `ext_gr_meter` is all it takes.
-
-3. **Measured by the panel itself** — For a compressor that reports nothing and exposes nothing, StripTease measures the reduction **without adding a single slot to the chain**. The panel is already in the FX chain; all it needs is to see both ends of the compressor at once. The reduction is what separates the two, once the static gain in between is discounted.
-
-   Nothing to insert, nothing to number, nothing to switch on. The plugin appears as the next free *Compressor n* — numbers already taken by reporting plugins never move — and `StripTease Check.lua` shows it as `measured -> Compressor n by the panel`, along with how.
-
-   **The good way: put the compressor in a container.** Right-click it → *Move FX to container*. StripTease recognises the shape, sets the container to four channels, and maps its input pins so that the container's own input is copied onto channels 3 and 4 — no plugin does this, it is pure routing. The panel then holds the compressor's output on channels 1/2 and its input on 3/4, in the same audio block, and measures **at the audio rate**. Attack and release settings show through, and the reading is immune to the fader, the panner and the metering preferences, all of which sit after the container. The compressor's own reported latency is read and used to line the two probes up, so a lookahead design does not throw false spikes on transients.
-
-   The panel can sit in either of two places, and they measure equally well:
-
-   *   **inside the container, as the last item.** The service channels never leave the container and the track stays stereo. But REAPER only embeds a *top-level* FX interface in the MCP, so a panel buried in a container cannot be embedded.
-   *   **right after the container, in the chain itself.** The container hands the tap out on its channels 3 and 4, and StripTease raises the track to four channels to carry it — the one thing this placement costs. The panel stays a top-level FX, so **its interface still embeds in the MCP**. It has to come *immediately* after the container: anything slipped in between would change channels 1/2 without changing 3/4, and its gain would read as reduction.
-
-   The shipped FX chains use the first form — drag one in and there is nothing to do. To embed the panel in the MCP, drag it out of the container so it lands just below it; the wiring is redone on the next rescan.
-
-   **The fallback, when there is no container.** With the panel simply sitting **above** the compressor in a flat chain, StripTease compares the panel's input to the track meter published for the *Output level* mode. It works and it needs nothing at all, but the track meter is only read about 30 times a second: **that pace is the limit of what the needle can show of the compressor's timing.** Release settings from roughly a tenth of a second upwards read clearly, faster ones all look alike, and an attack quicker than a frame is simply instantaneous. The caveats of *Output level* apply too — a muted track or a fader at −∞ leaves nothing to read, and *Options > Pre-fader track metering* works against the compensation.
-
-   **Conditions, checked automatically in both cases:**
-   *   with a container: the **panel is the container's last item, or the FX immediately after it**, and there is **exactly one silent dynamics plugin** in the container;
-   *   in a flat chain: the **panel sits above the compressor**, and that compressor is the **only silent dynamics below it** — with two of them, one reading could not tell the two reductions apart, so StripTease offers none rather than a wrong one;
-   *   **nothing inside the measured span reports its own reduction.** A plugin that does is read natively, and that reading always wins: its reduction would otherwise be counted twice, once by itself and once inside the measurement, so the measured route stands down.
-
-   **How the static gain is discounted.** When nothing but the compressor separates the two probes, the only static gain between them is its own makeup — so StripTease reads it straight from the plugin, and the reading is right from the first frame. Otherwise it is estimated, by remembering the widest gap seen over the last thirty seconds: correct as soon as the compressor lets go now and then, but a bus compressor that never stops reducing never shows its rest, and the needle then moves correctly while sitting too low. Reading is given up — back to the estimate — when the plugin's **auto makeup** is engaged, and, on the flat-chain fallback only, when the **track panner is off center**. `StripTease Check.lua` says which of the two is in use.
-
-   **How a compressor is recognised.** By its parameters first: a threshold, plus something that says what happens once it is crossed — a ratio, an explicit makeup, or an attack together with a release. That covers designs with no ratio control at all, a Fairchild-style variable-mu among them. Failing that, by name, against a list of about fifty device and plugin names matched on the name stripped of punctuation, so `LA-2A`, `LA 2A` and `CLA2A` are one entry. The list names models, never brands: Tube-Tech and Lindell also make EQs, and an EQ mistaken for a compressor would be given a number and a needle showing nothing real.
-
-   **When a plugin escapes the rules, point at it by hand.** `StripTease Check.lua` says, for every plugin, whether it is filed under dynamics and on what evidence — and where it is not, or where no makeup can be read, it offers to fit it: it prints the full parameter list with values and ranges, and asks which one is the makeup, which is the other side, which is the parallel mix, which is the auto-gain switch. Nothing is stored until those numbers are confirmed. The result is filed **per plugin type**, so every instance in every project follows, and it **survives StripTease updates** — the shipped scripts are regenerated at each version, so a change made in the code itself would not. Blank the makeup field to hand the plugin back to the rules. The running service picks the change up on its own, without being restarted.
-
-   **A parallel mix is undone.** A compressor blending only part of its work into the output reduces the chain by that same fraction, and a needle reading it straight cannot tell a compressor working less from one merely mixed in less. When the makeup is read, StripTease reads the mix control too and inverts the blend, so the needle shows the reduction the compressor *computes* — what its own meter shows. At 100% wet the arithmetic is unchanged, so nothing moves for anyone who does not touch the control. Below about 10% the inversion would amplify measurement noise more than it corrects, and the reading is left to sag gently instead. **At a mix of zero it necessarily reads nothing**: the compressed signal never leaves the plugin, and no comparison of input to output can recover what is not there.
-
-   A compressor **instantiated in mono** on a stereo track is measured on its left channel alone: REAPER only feeds it channel 1, and the right channel goes through untouched.
+3. **With the *StripTease GR* JSFX** — For compressors that report nothing and expose nothing, StripTease measures the reduction itself by comparing the signal before and after the plugin:
+   *   Insert one instance of **StripTease GR** *above* the compressor, set **Measurement point** to `In - above the compressor`.
+   *   Insert a second instance *below* the compressor, set **Measurement point** to `Out - below the compressor`.
+   *   Set **Compressor (number on this track)** to the same number on both, and point your GR meter at that same *Compressor n*. The slider still goes up to 4, but the meter only offers 1 and 2 — stay on those.
+   *   Pick a number that is **not already used by a compressor reporting natively** on that track. `StripTease Check.lua` lists them as *Compressor 1*, *Compressor 2*… — if you land on one of those, the native reading wins and StripTease GR steps aside silently.
+   *   **Makeup** — `Auto` tracks the plugin's makeup gain by itself (recommended); `Manual` lets you enter the exact **Manual makeup (dB)** you dialed in the compressor, from 0 to 24 dB.
 
 ### Levels
 
