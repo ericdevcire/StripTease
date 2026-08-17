@@ -1,7 +1,7 @@
 desc:StripTease Panel engine
 // ==========================================================================
 // StripTease Panel engine
-// Version: 1.0.0
+// Version: 1.1.0
 // Developer: Eric Avondo
 //
 // Freeware - personal use. Resale or redistribution for profit is
@@ -1059,6 +1059,7 @@ max(0, min(1, z5));
 function q3f()   ( qb + max(0, min(255, q7z + 1)) * 8 );
 function q3m(z0)  ( q3f() + 1 + q3h(z0) );
 function q7s() ( qo + max(0, min(255, q7z + 1)) * 2 );
+function qbp()  ( qbn + max(0, min(255, q7z + 1)) * 8 );
 function q33()
 ( q32 > 0.0000001 ? 20 * log10(q32) : -144 );
 function q3k() ( gmem[q3f() + 1] );
@@ -2446,6 +2447,7 @@ q1y = -999;
 q1x = 0;
 qb    = 4096;
 qo    = 61440;
+qbn   = 266240;
 q5   = 16384;
 q8   = 32768;
 qh   = 12288;
@@ -2485,6 +2487,29 @@ q32     = 0;
 q6f     = exp(-1 / (max(1, srate) * 0.030));
 q57 = 0;
 q1f     = 0;
+qc2   = 0;
+qc3   = 0;
+qci = 0; qcl = 0;
+qc9 = 0; qca = 0; qcb = 0; qcc = 0;
+qcd = 0; qce = 0;
+qc8 = 8192;
+qc7   = 4096;
+memset(qc7, 0, qc8 * 2);
+qch = 0; qcg = 0;
+qc6   = 64;
+qcf  = 1 - exp(-(qc6 / max(1, srate)) / 30);
+qcm = 1 - exp(-(qc6 / max(1, srate)) / 0.5);
+qcn    = qcf;
+qco    = 30;
+qc5    = exp(-480 / (8.6858896 * max(1, srate)));
+qbx  = -1;
+qbw   = 0;
+qbr  = 0;
+qbs     = 0;
+qby      = 0;
+qc1 = 1840;
+qc1[0] = -144; qc1[1] = -144; qc1[2] = -144; qc1[3] = 0;
+qc1[4] = -144; qc1[5] = -144; qc1[6] = -144; qc1[7] = 0;
 qw = -2.35; qx = 2.35; qy = qx - qw;
 q6r = 36;
 gfx_ext_retina = 1;
@@ -2527,12 +2552,140 @@ qbe();
 q43 = 0;
 z0 = 0; loop(qi, qe[z0] = -1; z0 += 1;);
 );
-function q6t(z0, z1)
-local(z2)
+function qcj(z0, z1, z2, z3, z4, z5)
+local(z6, z7, z8, z9)
 (
-z2 = abs(z0);
-abs(z1) > z2 ? ( z2 = abs(z1) );
-q32 = z2 > q32 ? z2 : q32 * q6f;
+z6 = z2 - z1;
+( z1 > -70 && z2 > -70 ) ? (
+z6 > z0[2] ? ( z0[2] += (z6 - z0[2]) * 0.5; )
+: ( z0[2] += (z6 - z0[2]) * qcn; );
+);
+( z4 && z5 < 1 ) ? (
+z8 = max(0.1, z5);
+z9 = ( pow(10, z6 / 20) - (1 - z8) ) / z8;
+z7 = z3 - 20 * log10(max(z9, 0.000001));
+) : (
+z7 = ( z4 ? z3 : z0[2] ) - z6;
+);
+z7 = max(0, min(60, z7));
+z1 < -90 ? ( z7 = 0 );
+z7;
+);
+function qck()
+local(z0, z1, z2, z3, z4, z5)
+(
+qbw ? (
+z0  = qbp();
+z1   = gmem[z0 + 6];
+z2  = gmem[z0 + 3];
+z3 = z1 & 1;
+z4  = ( z1 & 16 ) ? max(0, min(1, gmem[z0 + 4])) : 1;
+qcg = max(0, min(qc8 - 1, gmem[z0 + 7]));
+qcn = ( z1 & 8 ) ? qcm : qcf;
+z5 = qcj(qc1,
+qcd > 0.0000001 ? 20 * log10(qcd) : -144,
+qcb > 0.0000001 ? 20 * log10(qcb) : -144, z2, z3, z4);
+( z1 & 2 ) ? 0 : (
+z5 = max(z5,
+qcj(qc1 + 4,
+qce > 0.0000001 ? 20 * log10(qce) : -144,
+qcc > 0.0000001 ? 20 * log10(qcc) : -144, z2, z3, z4));
+);
+gmem[q3f() + 1 + qbw] = z5;
+qbs += 1;
+qbs > 10000000 ? ( qbs = 1 );
+gmem[z0 + 2] = qbs;
+);
+);
+function q6t(z0, z1, z2, z3)
+local(z4, z5)
+(
+z4 = qci ? max(abs(z2), abs(z3)) : max(abs(z0), abs(z1));
+q32 = z4 > q32 ? z4 : q32 * q6f;
+qci ? (
+qc9 = max(abs(z2), qc9 * q6f);
+qca = max(abs(z3), qca * q6f);
+qcb = max(abs(z0),  qcb * q6f);
+qcc = max(abs(z1),  qcc * q6f);
+qc7[qch]              = qc9;
+qc7[qc8 + qch]   = qca;
+z5 = qch - qcg;
+z5 < 0 ? ( z5 += qc8 );
+qcd = qc7[z5];
+qce = qc7[qc8 + z5];
+qch += 1;
+qch >= qc8 ? ( qch = 0 );
+qcl += 1;
+qcl >= qc6 ? ( qcl = 0; qck(); );
+) : (
+qc2 = max(abs(z0), qc2 * qc5);
+qc3 = max(abs(z1), qc3 * qc5);
+);
+);
+function qbu()
+local(z0)
+(
+z0 = gmem[qbp()];
+(z0 & 1)  ? 1 : (z0 & 2)  ? 2 : (z0 & 4)  ? 3 :
+(z0 & 8)  ? 4 : (z0 & 16) ? 5 : (z0 & 32) ? 6 : 0;
+);
+function qbt()
+local(z0, z1)
+(
+qci ? 1 : (
+( q40 & 3 ) ? 0 : (
+z0 = qbp() + 1;
+z1 = q41 + 1;
+gmem[z0] > z1 ? ( gmem[z0] = z1 );
+gmem[z0] == z1;
+);
+);
+);
+function qc4(z0, z1, z2, z3, z4, z5)
+local(z6, z7)
+(
+z0[0] = max(z1, z0[0] - z3 * 150);
+z0[1] = max(z2, z0[1] - z3 * 150);
+z6 = z0[1] - z0[0];
+( z0[0] > -70 && z0[1] > -70 ) ? (
+z6 > z0[2] ? (
+z0[2] += (z6 - z0[2]) * 0.5;
+) : (
+z0[2] += (z6 - z0[2]) * (1 - exp(-z3 / qco));
+);
+);
+z7 = max(0, min(60, ( z5 ? z4 : z0[2] ) - z6));
+z0[0] < -90 ? ( z7 = 0 );
+z7;
+);
+function qbv()
+local(z0, z1, z2, z3, z4, z5, z6, z7)
+(
+z0 = gmem[q7s() + 1];
+z0 != qbx ? (
+qbx = z0;
+z2 = time_precise();
+z3  = min(1, max(0.005, z2 - qby));
+qby = z2;
+z4  = qbp();
+z5   = gmem[z4 + 6];
+z6  = gmem[z4 + 3];
+z7 = z5 & 1;
+qco = ( z5 & 8 ) ? 0.5 : 30;
+z1 = qc4(qc1,
+qc2 > 0.0000001 ? 20 * log10(qc2) : -144,
+gmem[z4 + 4], z3, z6, z7);
+( z5 & 2 ) ? 0 : (
+z1 = max(z1,
+qc4(qc1 + 4,
+qc3 > 0.0000001 ? 20 * log10(qc3) : -144,
+gmem[z4 + 5], z3, z6, z7));
+);
+gmem[q3f() + 1 + qbw] = z1;
+qbs += 1;
+qbs > 10000000 ? ( qbs = 1 );
+gmem[qbp() + 2] = qbs;
+);
 );
 function q1g()
 local(z0, z1, z2, z3, z4, z5, z6, z7)
@@ -2549,8 +2702,14 @@ q9g = z0 + 1;
 );
 z0 += 1;
 );
+qbw = qbu();
+qci   = ( gmem[qbp() + 6] & 4 ) ? 1 : 0;
+qbw ? ( qbr = qbt() ) : ( qbr = 0 );
+qbr ? ( z6 = 1 );
 q57 = z6;
-!z6 ? ( q32 = 0 );
+!z6 ? ( q32 = 0; qc2 = 0; qc3 = 0;
+qc9 = 0; qca = 0; qcb = 0; qcc = 0; );
+( qbr && !qci ) ? qbv();
 z3 = q5 + max(0, min(255, q7z + 1)) * 64;
 z4 = q8 + max(0, min(255, q7z + 1)) * 64;
 q1x += 1;

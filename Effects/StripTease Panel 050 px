@@ -2,7 +2,7 @@ desc:StripTease Panel 050 px
 options:gmem=StripTease
 // ==========================================================================
 // StripTease Panel 050 px
-// Version: 1.0.0
+// Version: 1.1.0
 // Developer: Eric Avondo
 //
 // Freeware - personal use. Resale or redistribution for profit is
@@ -58,6 +58,14 @@ slider47:0<0,127,0.01>-Elem 47
 slider48:0<0,127,0.01>-Elem 48
 slider49:0<0,127,0.01>-Elem 49
 slider50:0<0,127,0.01>-Elem 50
+in_pin:left
+in_pin:right
+in_pin:GR probe left
+in_pin:GR probe right
+out_pin:left
+out_pin:right
+out_pin:GR probe left
+out_pin:GR probe right
 import striptease_panel.jsfx-inc
 @init
 q45();
@@ -66,6 +74,7 @@ q78();
 @block
 q1g();
 @sample
-q57 ? q6t(spl0, spl1);
+q57 ? q6t(spl0, spl1, spl2, spl3);
+qci ? ( spl2 = 0; spl3 = 0; );
 @gfx 80 50
 q3e();

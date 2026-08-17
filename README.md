@@ -40,7 +40,7 @@ StripTease is freeware. You may use it for your personal workflow. Selling, comm
 | `StripTease.jsfx` (*StripTease GR*) | Superseded — the panel now measures Gain Reduction on its own (section 6). Still shipped so that older projects using it keep working; there is no reason to reach for it in a new one. |
 | `StripTease System.lua` | Background script. Required for Gain Reduction, Direct Link, renaming, custom colors and preset sharing. |
 | `StripTease Check.lua` | Diagnostic script: tells you how each plugin's Gain Reduction is read, or why it is not. |
-| `FXChains/*.RfxChain` | Seven ready-made FX chains (panel + plugin, already mapped). |
+| `FXChains/*.RfxChain` | Twelve ready-made FX chains (panel + plugin, already mapped), one of them wired as a container so a compressor that reports nothing is still metered. |
 
 ### Installation
 
@@ -361,7 +361,7 @@ For gain reduction, the meter reads a single value per source: **Compressor 1**,
    *   **inside the container, as the last item.** The service channels never leave the container and the track stays stereo. But REAPER only embeds a *top-level* FX interface in the MCP, so a panel buried in a container cannot be embedded.
    *   **right after the container, in the chain itself.** The container hands the tap out on its channels 3 and 4, and StripTease raises the track to four channels to carry it — the one thing this placement costs. The panel stays a top-level FX, so **its interface still embeds in the MCP**. It has to come *immediately* after the container: anything slipped in between would change channels 1/2 without changing 3/4, and its gain would read as reduction.
 
-   The shipped FX chains use the first form — drag one in and there is nothing to do. To embed the panel in the MCP, drag it out of the container so it lands just below it; the wiring is redone on the next rescan.
+   **A worked example ships with StripTease**: `StripTease AO The Bus`, built in the second form — *TheBus* (Analog Obsession), which neither automatic route can read, alone in a container with the panel just after it. Drag it in and the needle reads. The two moves are all it takes on any silent compressor: *Move FX to container*, panel immediately below. Drop the panel inside the container instead and it measures just as well; the wiring is redone on the next rescan either way.
 
    **The fallback, when there is no container.** With the panel simply sitting **above** the compressor in a flat chain, StripTease compares the panel's input to the track meter published for the *Output level* mode. It works and it needs nothing at all, but the track meter is only read about 30 times a second: **that pace is the limit of what the needle can show of the compressor's timing.** Release settings from roughly a tenth of a second upwards read clearly, faster ones all look alike, and an attack quicker than a frame is simply instantaneous. The caveats of *Output level* apply too — a muted track or a fader at −∞ leaves nothing to read, and *Options > Pre-fader track metering* works against the compensation.
 
@@ -436,7 +436,7 @@ Loading it on any other track rebuilds all the bidirectional links automatically
 
 ### Included FX chains
 
-Nine ready-made chains are provided in `FXChains/`, each pairing a mapped panel with a specific plugin. 
+Twelve ready-made chains are provided in `FXChains/`, each pairing a mapped panel with a specific plugin. 
 
 > [!NOTE]
 > These chains are pre-linked with plugins I use regularly in my own workflow. Even if you don't own these exact plugins, you still get the huge benefit of a fully constructed, ready-to-use panel layout. You can simply load the chain, insert your own preferred plugin, and use the *Learn plugin parameter* function to re-link the existing knobs to your plugin of choice.
@@ -448,12 +448,17 @@ Nine ready-made chains are provided in `FXChains/`, each pairing a mapped panel 
 | StripTease SSL9000J | bx_console SSL 9000 J (Plugin Alliance) | 600 px |
 | StripTease BX Glue | bx_glue (Plugin Alliance) | 400 px |
 | StripTease TownHouse Bus | bx_townhouse Buss Compressor (Plugin Alliance) | 300 px |
+| StripTease Bx Opto | bx_opto (Plugin Alliance) | 300 px |
 | StripTease Vertigo VSC-2 | Vertigo VSC-2 (Plugin Alliance) | 300 px |
 | StripTease Pro-C3 | Pro-C 3 (FabFilter) | 300 px |
 | StripTease UAD 610A Pramp | UADx 610-A Preamp and EQ (Universal Audio) | 200 px |
 | StripTease UAD 610B Pramp | UADx 610-B Preamp and EQ (Universal Audio) | 200 px |
+| StripTease UAD DBX 160 | UADx dbx 160 Compressor (Universal Audio) | 200 px |
+| StripTease AO The Bus | TheBus (Analog Obsession) | 200 px |
 
 They expect the panels to be installed in `Effects/StripTease/` and the corresponding plugin to be present; the links rebuild themselves on load.
+
+**`StripTease AO The Bus` is also the worked example of the container setup** (section 6): TheBus publishes no reduction, so it sits in a container with the panel right after, and the panel measures it at the audio rate. Nothing to wire — StripTease does it on rescan. It is the one chain that raises the track to four channels.
 
 
 
