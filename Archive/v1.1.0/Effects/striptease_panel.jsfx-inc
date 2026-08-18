@@ -1,7 +1,7 @@
 desc:StripTease Panel engine
 // ==========================================================================
 // StripTease Panel engine
-// Version: 1.1.1
+// Version: 1.1.0
 // Developer: Eric Avondo
 //
 // Freeware - personal use. Resale or redistribution for profit is
@@ -1002,9 +1002,7 @@ function q3h(z0)  ( max(1, min(6, q7[z0 * 8 + 1])) );
 function q3n(z0)
 ( z0 >= 5 ? sprintf(#q7u, "Gate %d", z0 - 4)
 : sprintf(#q7u, "Compressor %d", z0) );
-function qcp() ( 20 );
-function q3p(z0)
-( max(-qcp(), min(qcp(), q7[z0 * 8 + 2])) );
+function q3p(z0)  ( max(-6, min(6, q7[z0 * 8 + 2])) );
 function q3l(z0)  ( q37(z0, 2) );
 function q8k(z0) ( min(2, floor((q7[z0 * 8 + 7] & 112) / 16)) );
 function q8w(z0, z1)
@@ -1068,8 +1066,6 @@ function q3k() ( gmem[q3f() + 1] );
 function q3i()  ( q3k() & 15 );
 function q3j()  ( floor(q3k() / 16) & 15 );
 function q8h(z0) ( 1 - exp(-q8d / max(0.001, z0)) );
-function qcq() ( 0.05 );
-function qcr() ( 0.11 );
 function qbl() ( 1.0 );
 function qbm() ( 30 );
 function qbk(z0, z1)
@@ -1098,14 +1094,14 @@ z2 = max(z6, min(z7, z2));
 z1    = q3m(z0);
 z4 = qbk(z0, gmem[q3f()]);
 z2 = !z4 ? 0 : max(0, gmem[z1]);
-z2 *= pow(2, q3p(z0) / 10);
+z2 > 0.05 ? ( z2 = max(0, z2 + q3p(z0)) );
 );
 qc[z0] >= qbm() ? (
 qp[z0] = z2; qq[z0] = z2;
 z5 ? ( qs[z0] = -144 );
 ) : (
-qp[z0] += (z2 - qp[z0]) *
-q8h( (z2 > qp[z0]) ? qcq() : qcr() );
+z2 > qp[z0] ? ( qp[z0] = z2 )
+: ( qp[z0] += (z2 - qp[z0]) * q8h(0.06) );
 z2 > qq[z0] ? ( qq[z0] = z2; qr[z0] = 0; ) : (
 qr[z0] += q8d;
 qr[z0] > 0.4 ? ( qq[z0] = max(z6, qq[z0] - q8d * 20) );
@@ -1253,7 +1249,7 @@ gfx_circle(z1, z21, z20, 1, 1);
 gfx_r = 0.30; gfx_g = 0.30; gfx_b = 0.32;
 gfx_circle(z1, z21, z20, 0, 1);
 gfx_r = 0.20; gfx_g = 0.20; gfx_b = 0.21;
-z10  = q3p(z0) / qcp() * 0.9;
+z10  = q3p(z0) / 6 * 0.9;
 z22 = max(0.7, z20 * 0.16);
 z23 = z20 * 0.72 * cos(z10); z24 = z20 * 0.72 * sin(z10);
 z25 = -z22 * sin(z10);       z26 = z22 * cos(z10);
@@ -3152,8 +3148,8 @@ q7d(q2i,
 q65(q2i, q5z(q2i, z1, z2)));
 ) :
 q2k == 8 ? (
-z8[2] = max(-qcp(), min(qcp(),
-floor((q6a + (q6c - z2) * 0.2 / q82)
+z8[2] = max(-6, min(6,
+floor((q6a + (q6c - z2) * 0.1 / q82)
 * 2 + 0.5) * 0.5));
 );
 );

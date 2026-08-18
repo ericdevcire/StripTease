@@ -67,34 +67,6 @@
         <source type="data" file="StripTease/StripTease UAD DBX 160.RfxChain">https://raw.githubusercontent.com/ericdevcire/StripTease/main/FXChains/StripTease%20UAD%20DBX%20160.RfxChain</source>
         <source type="data" file="StripTease/StripTease Vertigo VSC-2.RfxChain">https://raw.githubusercontent.com/ericdevcire/StripTease/main/FXChains/StripTease%20Vertigo%20VSC-2.RfxChain</source>
       </version>
-      <version name="1.1.1" author="Eric Avondo" time="2026-08-18T07:59:51Z">
-        <changelog><![CDATA[A gain-reduction readout exposed as a plugin parameter is now converted to real decibels instead of being published in whatever unit the plugin happened to use: StripTease asks the plugin what it would display at each end of the readout's travel and derives the conversion, and refuses a readout whose unit cannot be established rather than publishing it wrong -- the plugin is then measured by the panel instead. Readouts learned on earlier versions are re-examined the same way. The dB is now read from the number attached to the dB unit, not from the first number in the label. StripTease Check.lua names each plugin's route, the scale factor applied and the string the plugin displays. The GR meter's calibration screw is a sensitivity instead of an offset, ranging over plus or minus 20 dB, the deflection doubling every 10 dB of screw. And the needle has weight, so it no longer shivers on a source that publishes in bursts.]]></changelog>
-        <source type="effect" file="striptease_panel.jsfx-inc">https://raw.githubusercontent.com/ericdevcire/StripTease/main/Effects/striptease_panel.jsfx-inc</source>
-        <source type="effect" file="StripTease.jsfx">https://raw.githubusercontent.com/ericdevcire/StripTease/main/Effects/StripTease.jsfx</source>
-        <source type="effect" file="StripTease Panel 050 px">https://raw.githubusercontent.com/ericdevcire/StripTease/main/Effects/StripTease%20Panel%20050%20px</source>
-        <source type="effect" file="StripTease Panel 100 px">https://raw.githubusercontent.com/ericdevcire/StripTease/main/Effects/StripTease%20Panel%20100%20px</source>
-        <source type="effect" file="StripTease Panel 150 px">https://raw.githubusercontent.com/ericdevcire/StripTease/main/Effects/StripTease%20Panel%20150%20px</source>
-        <source type="effect" file="StripTease Panel 200 px">https://raw.githubusercontent.com/ericdevcire/StripTease/main/Effects/StripTease%20Panel%20200%20px</source>
-        <source type="effect" file="StripTease Panel 300 px">https://raw.githubusercontent.com/ericdevcire/StripTease/main/Effects/StripTease%20Panel%20300%20px</source>
-        <source type="effect" file="StripTease Panel 400 px">https://raw.githubusercontent.com/ericdevcire/StripTease/main/Effects/StripTease%20Panel%20400%20px</source>
-        <source type="effect" file="StripTease Panel 600 px">https://raw.githubusercontent.com/ericdevcire/StripTease/main/Effects/StripTease%20Panel%20600%20px</source>
-        <source type="script" main="main" file="StripTease System.lua">https://raw.githubusercontent.com/ericdevcire/StripTease/main/Scripts/StripTease%20System.lua</source>
-        <source type="script" main="main" file="StripTease Check.lua">https://raw.githubusercontent.com/ericdevcire/StripTease/main/Scripts/StripTease%20Check.lua</source>
-        <source type="script" main="main" file="StripTease Install FX chains.lua">https://raw.githubusercontent.com/ericdevcire/StripTease/main/Scripts/StripTease%20Install%20FX%20chains.lua</source>
-        <source type="effect" file="LICENSE.txt">https://raw.githubusercontent.com/ericdevcire/StripTease/main/Effects/LICENSE.txt</source>
-        <source type="data" file="StripTease/StripTease AO The Bus.RfxChain">https://raw.githubusercontent.com/ericdevcire/StripTease/main/FXChains/StripTease%20AO%20The%20Bus.RfxChain</source>
-        <source type="data" file="StripTease/StripTease BX Glue.RfxChain">https://raw.githubusercontent.com/ericdevcire/StripTease/main/FXChains/StripTease%20BX%20Glue.RfxChain</source>
-        <source type="data" file="StripTease/StripTease Bx Opto.RfxChain">https://raw.githubusercontent.com/ericdevcire/StripTease/main/FXChains/StripTease%20Bx%20Opto.RfxChain</source>
-        <source type="data" file="StripTease/StripTease Pro-C3.RfxChain">https://raw.githubusercontent.com/ericdevcire/StripTease/main/FXChains/StripTease%20Pro-C3.RfxChain</source>
-        <source type="data" file="StripTease/StripTease SSL4000E.RfxChain">https://raw.githubusercontent.com/ericdevcire/StripTease/main/FXChains/StripTease%20SSL4000E.RfxChain</source>
-        <source type="data" file="StripTease/StripTease SSL4000G.RfxChain">https://raw.githubusercontent.com/ericdevcire/StripTease/main/FXChains/StripTease%20SSL4000G.RfxChain</source>
-        <source type="data" file="StripTease/StripTease SSL9000J.RfxChain">https://raw.githubusercontent.com/ericdevcire/StripTease/main/FXChains/StripTease%20SSL9000J.RfxChain</source>
-        <source type="data" file="StripTease/StripTease TownHouse Bus.RfxChain">https://raw.githubusercontent.com/ericdevcire/StripTease/main/FXChains/StripTease%20TownHouse%20Bus.RfxChain</source>
-        <source type="data" file="StripTease/StripTease UAD 610A Pramp.RfxChain">https://raw.githubusercontent.com/ericdevcire/StripTease/main/FXChains/StripTease%20UAD%20610A%20Pramp.RfxChain</source>
-        <source type="data" file="StripTease/StripTease UAD 610B Pramp.RfxChain">https://raw.githubusercontent.com/ericdevcire/StripTease/main/FXChains/StripTease%20UAD%20610B%20Pramp.RfxChain</source>
-        <source type="data" file="StripTease/StripTease UAD DBX 160.RfxChain">https://raw.githubusercontent.com/ericdevcire/StripTease/main/FXChains/StripTease%20UAD%20DBX%20160.RfxChain</source>
-        <source type="data" file="StripTease/StripTease Vertigo VSC-2.RfxChain">https://raw.githubusercontent.com/ericdevcire/StripTease/main/FXChains/StripTease%20Vertigo%20VSC-2.RfxChain</source>
-      </version>
     </reapack>
   </category>
 </index>

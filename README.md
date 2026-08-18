@@ -1,6 +1,8 @@
 
 # STRIPTEASE User Manual (BETA)
 
+**Version 1.1.1** — see the [changelog](Changelog.md) for what changed.
+
 Welcome to the comprehensive guide for the StripTease system in REAPER. StripTease turns any REAPER track into a customizable console strip: knobs, switches and Gain Reduction meters that live directly in the mixer (MCP), drive your real plugins, and travel with your presets and track templates.
 
 This document covers the package content, the setup, the exhaustive list of every menu option, every mouse and keyboard gesture, the Direct Link workflow, and the preset / recipe system.
@@ -273,7 +275,7 @@ What comes along, and what doesn't:
 | **Ctrl + Shift** + wheel over a knob | ±5 steps, or ±5 detents |
 | Click a toggle | Flip it — or hold it, if *Momentary* is on |
 | Click / drag on a radio | Select the position under the mouse |
-| Drag the VU calibration screw | Trim the meter, −6 to +6 dB in 0.5 dB steps (the reading shows `TRIM +x.x`) |
+| Drag the VU calibration screw | Trim the meter, −20 to +20 dB in 0.5 dB steps — an offset in level mode, a sensitivity in GR mode (the reading shows `TRIM +x.x`) |
 | Double-click the VU screw | Reset the trim to 0 |
 | Click the VU `GR` / `IN` / `OUT` label | Cycle the measurement — gain reduction, input level, output level |
 | Wheel over the panel | Scroll the panel |
@@ -344,11 +346,13 @@ For gain reduction, the meter reads a single value per source: **Compressor 1**,
 
 2. **Through a parameter named after the reduction** — `GainReduction_dB` is only served by the VST hosting side of REAPER: by REAPER's own VST2 extension, and by the VST3 `IGainReductionInfo` interface. **A JSFX never answers it.** A JSFX that sets `ext_gr_meter` does feed REAPER's own track meter — you can watch the reduction move next to the fader — but that path is internal to REAPER's JSFX module and has no script side at all. What REAPER shows there, it lends to no one.
 
-   The one channel a JSFX does share with a script is a parameter. So StripTease also accepts, on a plugin that answers nothing, **a parameter whose name contains *gain reduction*, *GR readout* or *GR meter*, and whose range is graduated in dB** (more than one unit wide). Both conditions together: a control that happens to carry such a name is rarely graduated in dB, so the pair leaves no room for doubt and the readout is taken as is.
+   The one channel a JSFX does share with a script is a parameter. So StripTease also accepts, on a plugin that answers nothing, **a parameter whose name contains *gain reduction*, *GR readout* or *GR meter*, and whose range is graduated** (more than one unit wide). Both conditions together: a control that happens to carry such a name is rarely a readout, so the pair leaves no room for doubt.
+
+   **The unit is established, never assumed.** A graduated range is not necessarily a range in decibels: plenty of readouts are graduated 0..100, which is a percentage of the plugin's own meter. Publishing that as a hundred dB is exactly how a needle ends up disagreeing with the meter it is supposed to mirror, by a different amount on every plugin. So StripTease asks the plugin what it would display at each end of the readout's travel — a read-only question, which changes nothing — and derives the conversion from the answer. If the readout turns out not to be proportional to its own travel, it is read through its display instead. If no decibels can be found at all, the readout is refused rather than published in an unknown unit, and the plugin falls back to being measured by the panel, which compares two levels in dB and cannot get the scale wrong.
 
    **Learned readouts.** Plenty of plugins do publish their reduction, but under a name the rule above cannot vouch for — *Redux*, *Reduction*, *Compression*, *GR* — and, more often than not, as a normalized 0..1 parameter that spells its dB out only in the displayed text. A name like that proves nothing on its own, so StripTease watches the candidate instead: while the track plays, a reduction readout climbs when the signal gets loud and returns to rest when it goes quiet, which no ordinary control does on its own. A parameter that behaves that way is adopted, and **what is learned is remembered per plugin type** — every instance, in every project afterwards, is read straight away. Automated, linked or modulated parameters are excluded from the start, and a candidate that never settles the question simply stays unused.
 
-   Nothing to set up in either case — the plugin is picked up as *Compressor n* like any other, and `StripTease Check.lua` marks it `[via parameter: ...]`, with `(learned)` when it came from observation. The value is taken in absolute value, so it makes no difference whether the plugin counts its reduction downwards (−6) or upwards (6); readings beyond 60 dB are clamped. If you write your own JSFX, exposing one such parameter alongside `ext_gr_meter` is all it takes.
+   Nothing to set up in either case — the plugin is picked up as *Compressor n* like any other, and `StripTease Check.lua` marks it `[parameter p7 "GR Meter", mode raw]`, adding the scale factor when one was needed, `learned` when the readout came from observation, and the string the plugin itself displays so you can check the reading against it. The value is taken in absolute value, so it makes no difference whether the plugin counts its reduction downwards (−6) or upwards (6); readings beyond 60 dB are clamped. If you write your own JSFX, exposing one such parameter alongside `ext_gr_meter` is all it takes.
 
 3. **Measured by the panel itself** — For a compressor that reports nothing and exposes nothing, StripTease measures the reduction **without adding a single slot to the chain**. The panel is already in the FX chain; all it needs is to see both ends of the compressor at once. The reduction is what separates the two, once the static gain in between is discounted.
 
@@ -407,10 +411,10 @@ When nothing is publishing, the needle sits at the far left, the readout shows `
 
 *   **Scale** — Gain reduction: *Linear* (0 4 8 12 16 20) or *Exponential* (0 2 4 6 10 20), the latter giving more resolution in the first few dB. Levels: *Linear* (−20 −15 −10 −5 0 +3) or *Exponential* (−20 −10 −5 −2 0 +3), the latter giving more resolution near full scale. Both end on the red 0 → +3 zone.
 *   **Reference** — In level mode the dial is calibrated in dBFS by default (0 = full scale). *Reference...* moves that 0 down to −9, −12, −14, −18 or −20 dBFS, so the meter reads your working headroom instead of the distance to clipping. It shifts the dial, the readout and the red zone together.
-*   **Trim** — Drag the screw at the bottom of the needle meter to offset the reading by up to ±6 dB. On a GR meter this matches the calibration of a plugin's own meter; on a level meter it fine-tunes on top of the reference. Double-click the screw to zero it.
+*   **Trim** — Drag the screw at the bottom of the needle meter to adjust the reading by up to ±20 dB. On a level meter it offsets the reading, fine-tuning on top of the reference. On a GR meter it sets the sensitivity rather than offsetting the scale — the deflection doubles every 10 dB of screw: +10 reads twice as far, +20 four times, −10 half. The needle still rests on 0 when nothing is being compressed, so the dial always reads from 0 to the top of its scale. It should rarely be needed now that the reading is converted into real decibels at the source — if a GR meter disagrees with the plugin's own by more than a hair, run `StripTease Check.lua` before reaching for the screw: it will say how that plugin is read, and what it reads. Double-click the screw to zero it.
 *   **The GR / IN / OUT switch** — The little `GR`, `IN` or `OUT` word printed at the bottom right of the meter, next to the screw, is clickable: one click cycles the measurement, so you can flip a strip's meter between compression and levels while listening, without going through the right-click menu. It is hidden on meters too small to print it legibly.
 *   **Show value** displays the numeric dB — the reduction, or the level in dBFS (`-inf` below −90). **Peak hold** freezes the maximum reduction, or the loudest peak, for a moment.
-*   Both modes share the same ballistics: instant rise toward the higher reading, smooth release.
+*   Both modes share the same ballistics: the needle has weight. It rises quickly toward a higher reading and falls back more slowly, but it never jumps — a source that publishes in bursts no longer makes it shiver. **Peak hold** is the one that still reacts instantly, so the transient the needle smooths over is still shown.
 
 
 

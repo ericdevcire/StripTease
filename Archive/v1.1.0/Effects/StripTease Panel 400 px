@@ -1,8 +1,8 @@
-desc:StripTease Panel 050 px
+desc:StripTease Panel 400 px
 options:gmem=StripTease
 // ==========================================================================
-// StripTease Panel 050 px
-// Version: 1.1.1
+// StripTease Panel 400 px
+// Version: 1.1.0
 // Developer: Eric Avondo
 //
 // Freeware - personal use. Resale or redistribution for profit is
@@ -76,5 +76,5 @@ q1g();
 @sample
 q57 ? q6t(spl0, spl1, spl2, spl3);
 qci ? ( spl2 = 0; spl3 = 0; );
-@gfx 80 50
+@gfx 80 400
 q3e();
