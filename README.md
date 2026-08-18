@@ -17,8 +17,8 @@ Feel free to help this project! if you like and find StripTease useful, you can 
 https://forum.cockos.com/showthread.php?t=310626&highlight=striptease&fbclid=IwY2xjawTryxBwZG9mAWV4dG4DYWVtAjEwAHNydGMGYXBwX2lkEDIyMjAzOTE3ODgyMDA4OTIAAR6op_o8YQiXT-lFyRgNNMgFd8T6A1iqtEKn-45UPtacWuSZo4Xy6UhX2-zwDA_aem_YJVd9nq1PuZD8PUeIRiZ_A
 
   
-
-A good mix should always end naked.
+  
+*A good mix should always end naked.*
   
 Have fun !
 
