@@ -7,6 +7,9 @@ options:gmem=StripTease
 //
 // Freeware - personal use. Resale or redistribution for profit is
 // prohibited. See LICENSE.txt.
+//
+// Gain-reduction estimation adapted from the StripLink Aggregator by RobKor
+// (Wormhole Labs), reimplemented here - with thanks.
 // ==========================================================================
 slider1:0<0,1,1{In   -  above the compressor,Out  -  below the compressor}>Measurement point
 slider2:1<1,4,1>Compressor (number on this track)
