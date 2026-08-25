@@ -8,16 +8,18 @@ Welcome to the comprehensive guide for the StripTease system in REAPER. StripTea
 This document covers the package content, the setup, the exhaustive list of every menu option, every mouse and keyboard gesture, the Direct Link workflow, and the preset / recipe system.
 
 
-**SUPPORT**  
+**SUPPORT ME**  
 Feel free to help this project! if you like and find StripTease useful, you can **buy me a coffee here** :  
-https://ko-fi.com/ericire58504
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/D3W024KM4J)
 
 
 **COCKOS REAPER FORUM POST** :  
 https://forum.cockos.com/showthread.php?t=310626&highlight=striptease&fbclid=IwY2xjawTryxBwZG9mAWV4dG4DYWVtAjEwAHNydGMGYXBwX2lkEDIyMjAzOTE3ODgyMDA4OTIAAR6op_o8YQiXT-lFyRgNNMgFd8T6A1iqtEKn-45UPtacWuSZo4Xy6UhX2-zwDA_aem_YJVd9nq1PuZD8PUeIRiZ_A
 
-
-
+  
+  
+*A good mix should always end naked.*
+  
 Have fun !
 
 Eric
