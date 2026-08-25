@@ -32,7 +32,12 @@ Eric
 
 StripTease is freeware. You may use it for your personal workflow. Selling, commercially repackaging or redistributing it for profit — this version or any derivative — is prohibited.
 
+## Credits
 
+**Gain-reduction estimation — thanks to RobKor.** When a compressor reports its reduction nowhere, StripTease estimates it by comparing the levels on either side of the plugin (section 6, *Measured by the panel itself*). That method is borrowed from the **StripLink Aggregator** by **RobKor** (Wormhole Labs): a fast peak envelope taken on each side of the compressor, an adaptive estimate of the static makeup gain in between, and the difference between the two read as the reduction. StripTease reimplements it in its own way — per block rather than per sample, over its own shared-memory probes — but the approach and its calibration come from there, and credit is due. Thanks to RobKor for publishing it in the open.
+Go and use his STRIPLINK here : https://forum.cockos.com/showthread.php?t=309941&highlight=striplink
+  
+  
 ## 1. What's in the package
 
 | File | Role |
