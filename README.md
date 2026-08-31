@@ -118,6 +118,8 @@ Pick the panel height that suits your mixer in the FX browser. Whatever size you
 | **Separator** | Horizontal line to group controls. |
 | **Title** | Standalone text label. |
 
+**The three controls are interchangeable.** A knob, a toggle and a radio carry the same things — a CC, a channel, a name, a Direct Link — so any of them converts into either of the others from its menu, keeping all of it (*Change to...*, section 3.2). Picking the wrong one when you lay out a strip costs nothing.
+
 New knobs, toggles and radios are automatically assigned the first free CC number and named after it (`CC 12`); changing the CC of a still-auto-named element renames it accordingly. As soon as you rename it manually, the name stops following the CC.
 
 > **Put the panel above the plugins it drives by CC.** MIDI emitted by a JSFX only travels *down* the FX chain, so a plugin sitting **before** the panel never receives its CC, and the knob silently stops driving it. Move the panel to the top of the chain, or move the plugin below it. **Direct Link is not affected** — it drives the plugin through the REAPER API, so it works from any position.
@@ -150,7 +152,7 @@ Every element menu, whatever the type, ends with the same block — **Edit mode*
 *   **Edit mode** — Enables moving and resizing elements by dragging: drag to move, **Shift + drag up to grow, down to shrink**. A yellow `EDIT` label and the alignment grid are shown while active. Also where multiple selection lives (section 3.8).
 *   **Show names** — Globally shows/hides the labels under the controls.
 *   **Show knob rings** — Globally shows/hides the colored value ring around knobs.
-*   **Scroll group: ...** — *Independent*, *Group A*, *B*, *C*, *D*. Panels in the same group scroll together, which is invaluable when you have many tracks: scroll one strip and the whole group follows. When tabs are on, the group also turns its pages together (section 3.7).
+*   **Scroll group: ...** — *Independent*, *Group A*, *B*, *C*, *D*. Panels in the same group scroll together, which is invaluable when you have many tracks: scroll one strip and the whole group follows. When tabs are on, the group also turns its pages together (section 3.7). A radio on the panel can take this over and put the choice on the surface — see *Selects scroll group* in section 3.2; while one is armed, this menu writes into it and the groups it cannot reach are greyed out here.
 *   **Color...** — Background color of the panel: **Palette...** (custom color picker) plus White, Light gray, Gray, Dark gray, Dark, Green, Red, Blue, Yellow, Orange, Pink.
 *   **Grid: N columns...** — 1 to 4 columns. Changing it re-flows the existing layout.
 *   **Fit grid to elements** — Re-sizes the grid cell to the largest element on the panel, so nothing overlaps any more. The grid does *not* follow element sizes on its own (see below); this is the one entry that makes it catch up. Positions are unchanged — they are stored as fractions of a cell, so the layout keeps its shape and only its spacing changes.
@@ -523,7 +525,7 @@ They expect the panels to be installed in `Effects/StripTease/` and the correspo
 
 ## 8. One preset bank for all panel sizes
 
-The seven panel modules (050 / 100 / 150 / 200 / 300 / 400 / 600 px) only differ by their fixed height — same 50 sliders, same saved state, same engine. Their presets are therefore fully interchangeable, but REAPER files user presets by plugin, and it sees seven different plugins.
+The seven panel modules (050 / 100 / 150 / 200 / 300 / 400 / 600 px) only differ by their fixed height — same 100 sliders, same saved state, same engine. Their presets are therefore fully interchangeable, but REAPER files user presets by plugin, and it sees seven different plugins.
 
 `StripTease System.lua` closes that gap: every two seconds it compares the seven preset files REAPER keeps in `<REAPER resource path>/presets/`, and propagates any change to the other six.
 

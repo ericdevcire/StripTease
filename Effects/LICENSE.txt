@@ -14,4 +14,4 @@ The author hereby grants you a personal, non-exclusive, and non-transferable rig
 
 ## 3. "As Is" Software
 This Software is **Freeware**. It is provided to you "AS IS", without any warranty of any kind, express or implied.
-The author does not warrant that the operation of the Software will be uninterrupted or error-free. Faults may persist from one update to the next: updates are released as and when the author is able to produce them, and carry no obligation to correct any particular fault. Being supplied free of charge, the Software comes with no guarantee of correction, of support, or of continued availability, and the author shall not be liable for any loss or damage arising from its use.
+The author does not warrant that the development of the Software will be uninterrupted or error-free. Faults may persist from one update to the next: updates are released when the author is able to produce them.
