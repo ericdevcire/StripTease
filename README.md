@@ -4,7 +4,7 @@
 **Version 1.2.0** — see the [changelog](Changelog.md) for what changed.
 
 Welcome to the comprehensive guide for the StripTease system in REAPER. StripTease turns any REAPER track into a customizable console strip: knobs, switches and Gain Reduction meters that live directly in the mixer (MCP), drive your real plugins, and travel with your presets and track templates. 
-StripTease is vibe-coded.
+  StripTease is vibe-coded.
 
 This document covers the package content, the setup, the exhaustive list of every menu option, every mouse and keyboard gesture, the Direct Link workflow, and the preset / recipe system.
 
