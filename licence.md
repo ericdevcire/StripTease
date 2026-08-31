@@ -1,8 +1,8 @@
-# End User License Agreement - Freeware (Beta Version)
+# End User License Agreement - Freeware
 
 **STRIPTEASE**
 
-**Version**: 1.0  
+**Version**: 1.2  
 **Developer** : Eric Avondo  
 
 ## 1. Grant of License (Personal Use)
@@ -12,6 +12,6 @@ The author hereby grants you a personal, non-exclusive, and non-transferable rig
 - **Commercial Use Prohibited:** You are not authorized to use this Software, its files, or its source code for commercial or for-profit purposes. You may not sell, rent, lease, or distribute the Software.
 - **Modification and Derivative Works:** You may modify the source code and create derivative works strictly for your own personal, non-commercial use. However, it is strictly prohibited to modify, distribute, or create derivative works based on this Software for any commercial or for-profit purposes.
 
-## 3. Beta Version and "As Is" Software
-This Software is a **Freeware** currently distributed as a **beta version**. It is provided to you "AS IS", without any warranty of any kind, express or implied.
-The author does not warrant that the operation of the Software will be uninterrupted or error-free.
+## 3. "As Is" Software
+This Software is **Freeware**. It is provided to you "AS IS", without any warranty of any kind, express or implied.
+The author does not warrant that the development of the Software will be uninterrupted or error-free. Faults may persist from one update to the next: updates are released when the author is able to produce them.

@@ -2,7 +2,7 @@ desc:StripTease Panel 050 px
 options:gmem=StripTease
 // ==========================================================================
 // StripTease Panel 050 px
-// Version: 1.1.1
+// Version: 1.2.0
 // Developer: Eric Avondo
 //
 // Freeware - personal use. Resale or redistribution for profit is
@@ -58,6 +58,62 @@ slider47:0<0,127,0.01>-Elem 47
 slider48:0<0,127,0.01>-Elem 48
 slider49:0<0,127,0.01>-Elem 49
 slider50:0<0,127,0.01>-Elem 50
+slider51:0<0,127,0.01>-Elem 51
+slider52:0<0,127,0.01>-Elem 52
+slider53:0<0,127,0.01>-Elem 53
+slider54:0<0,127,0.01>-Elem 54
+slider55:0<0,127,0.01>-Elem 55
+slider56:0<0,127,0.01>-Elem 56
+slider57:0<0,127,0.01>-Elem 57
+slider58:0<0,127,0.01>-Elem 58
+slider59:0<0,127,0.01>-Elem 59
+slider60:0<0,127,0.01>-Elem 60
+slider61:0<0,127,0.01>-Elem 61
+slider62:0<0,127,0.01>-Elem 62
+slider63:0<0,127,0.01>-Elem 63
+slider64:0<0,127,0.01>-Elem 64
+slider65:0<0,127,0.01>-Elem 65
+slider66:0<0,127,0.01>-Elem 66
+slider67:0<0,127,0.01>-Elem 67
+slider68:0<0,127,0.01>-Elem 68
+slider69:0<0,127,0.01>-Elem 69
+slider70:0<0,127,0.01>-Elem 70
+slider71:0<0,127,0.01>-Elem 71
+slider72:0<0,127,0.01>-Elem 72
+slider73:0<0,127,0.01>-Elem 73
+slider74:0<0,127,0.01>-Elem 74
+slider75:0<0,127,0.01>-Elem 75
+slider76:0<0,127,0.01>-Elem 76
+slider77:0<0,127,0.01>-Elem 77
+slider78:0<0,127,0.01>-Elem 78
+slider79:0<0,127,0.01>-Elem 79
+slider80:0<0,127,0.01>-Elem 80
+slider81:0<0,127,0.01>-Elem 81
+slider82:0<0,127,0.01>-Elem 82
+slider83:0<0,127,0.01>-Elem 83
+slider84:0<0,127,0.01>-Elem 84
+slider85:0<0,127,0.01>-Elem 85
+slider86:0<0,127,0.01>-Elem 86
+slider87:0<0,127,0.01>-Elem 87
+slider88:0<0,127,0.01>-Elem 88
+slider89:0<0,127,0.01>-Elem 89
+slider90:0<0,127,0.01>-Elem 90
+slider91:0<0,127,0.01>-Elem 91
+slider92:0<0,127,0.01>-Elem 92
+slider93:0<0,127,0.01>-Elem 93
+slider94:0<0,127,0.01>-Elem 94
+slider95:0<0,127,0.01>-Elem 95
+slider96:0<0,127,0.01>-Elem 96
+slider97:0<0,127,0.01>-Elem 97
+slider98:0<0,127,0.01>-Elem 98
+slider99:0<0,127,0.01>-Elem 99
+slider100:0<0,127,0.01>-Elem 100
+
+// Pins 3/4: the gain-reduction probe. In a 4-channel container whose last item
+// is this panel, the container's own input is copied onto them by plain pin
+// mapping, and the panel then holds both ends of the compressor -- its output
+// on 1/2, its input on 3/4. Outside that arrangement they carry nothing, and
+// the panel behaves exactly as it did before.
 in_pin:left
 in_pin:right
 in_pin:GR probe left
@@ -66,15 +122,23 @@ out_pin:left
 out_pin:right
 out_pin:GR probe left
 out_pin:GR probe right
+
 import striptease_panel.jsfx-inc
+
 @init
-q45();
+sb_init();
+
 @serialize
-q78();
+sb_serialize();
+
 @block
-q1g();
+sb_block();
+
 @sample
-q57 ? q6t(spl0, spl1, spl2, spl3);
-qci ? ( spl2 = 0; spl3 = 0; );
+sb_meas_on ? sb_sample(spl0, spl1, spl2, spl3);
+
+// The service channels do not leave the container.
+sb_tap ? ( spl2 = 0; spl3 = 0; );
+
 @gfx 80 50
-q3e();
+sb_gfx();
