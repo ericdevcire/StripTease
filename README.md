@@ -113,7 +113,7 @@ Pick the panel height that suits your mixer in the FX browser. Whatever size you
 | **Toggle** | On/off switch (0 / 127), with an optional separate label for the ON state. |
 | **Radio** | Multi-position selector, 2 to 6 steps, horizontal or vertical. |
 | **GR meter** | Needle VU showing **gain reduction or a level** (one at a time), with a calibration screw. |
-| **Stereo VU** | Two-column level meter, left and right side by side, with a clip indicator at the top of each. Levels only — gain reduction is mono at the source. |
+| **Stereo VU** | Two-column level meter, left and right side by side, with a clip indicator at the top of each. Levels only. |
 | **GR bar** | Bar-graph gain reduction meter, horizontal or vertical. |
 | **Separator** | Horizontal line to group controls. |
 | **Title** | Standalone text label. |
