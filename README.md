@@ -37,7 +37,8 @@ StripTease is freeware. You may use it for your personal workflow. Selling, comm
 ## Credits
 
 **Gain-reduction estimation — StripLink inspiration (RobKor / Wormhole Labs) on earlier versions.**  
-In earlier versions of StripTease (up to v1.2.0), the concept of estimating gain reduction by comparing levels on either side of a silent plugin was borrowed from the **StripLink Aggregator** by **RobKor** (Wormhole Labs). Check out his STRIPLINK project here: https://forum.cockos.com/showthread.php?t=309941&highlight=striplink
+In earlier versions of StripTease (up to v1.2.0), the concept of estimating gain reduction by comparing levels on either side of a silent plugin was borrowed from the **StripLink Aggregator** by **RobKor** (Wormhole Labs). Check out his STRIPLINK project here: https://forum.cockos.com/showthread.php?t=309941&highlight=striplink  
+
 Starting with **v1.2.1**, the Gain Reduction measurement engine has been completely redesigned and rebuilt from the ground up with a custom audio-rate JSFX DSP core (sub-chunk RMS energy ratio, 2D level/gain histogram linear regression for rest gain, 700 Hz dual-band split spectral validation, PDC latency alignment, and dry/wet mix inversion), fully replacing the earlier implementation. 
   
   
