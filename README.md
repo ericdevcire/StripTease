@@ -63,18 +63,44 @@ Starting with **v1.2.1**, the Gain Reduction measurement engine has been complet
 4. Right-click the panel FX slot in the mixer and check **Show embedded UI in MCP**.
 
 **Method 2: Manual Installation**
-1. Copy the panels, `striptease_panel.jsfx-inc`, and `StripTease.jsfx` into `<REAPER resource path>/Effects/StripTease/`.
-2. Place the `.lua` scripts in `<REAPER resource path>/Scripts/` and register them via *Actions > Show action list > New action > Load ReaScript*.
-3. Copy `.RfxChain` files into `<REAPER resource path>/FXChains/`.
-4. Enable **Show embedded UI in MCP** on the panel slot.
+1. Copy the panels, `striptease_panel.jsfx-inc`, and `StripTease.jsfx` into `<REAPER resource path>/Effects/StripTease/` (the provided FX chains expect exactly this folder name).
+2. Put the `.lua` scripts anywhere REAPER can reach them — `<REAPER resource path>/Scripts/`, or simply next to the JSFX in `Effects/StripTease/` — and register them via *Actions > Show action list > New action > Load ReaScript*.
+3. Copy the `.RfxChain` files into `<REAPER resource path>/FXChains/` if you want the ready-made chains.
+4. In the mixer, enable **Show embedded UI in MCP** on the panel's FX slot.
 
-### Core Scripts
+### StripTease System.lua
 
-- **`StripTease System.lua`:** Keep running in the background. Handles Direct Link bidirectional synchronization, GR meter routing (native, parameter, or measured audio), recipe link reconstruction, OS color picking, renaming, and cross-size preset synchronization.  
-  *Tip:* Add it to the SWS Global Startup Action (*Extensions > Startup actions*).
-- **`StripTease Check.lua`:** Run during playback to diagnose why a meter is inactive. Reports whether plugins are read natively, via parameter, or measured, and guides manual parameter mapping.
-- **`StripTease Panel Builder.lua`:** Generates complete panels from plugin parameters without manual learning. Requires **ReaImGui**.
-- **Panel Sizing & Presets:** Choose any height (050 to 600 px). Panels support up to **100 elements** and scroll when needed. Presets saved on one size automatically sync across all other six sizes via `System.lua`.
+Run it once; it stays in the background and handles everything the JSFX cannot do by itself:
+
+*   Finds every compressor or gate on your tracks that reports its gain reduction — to REAPER through `GainReduction_dB`, or through a parameter named after it, or through one it learned to read — and feeds the GR meters. For a compressor that reports nothing, it tells the panel to measure the reduction itself when the chain allows it.
+*   Maintains the **Direct Links** between panel elements and real plugin parameters (both directions).
+*   Rebuilds links from **recipes** when a preset, track template or FX chain is loaded.
+*   Serves the **Rename** dialog, the **Palette** color picker, and the value pop-up shown when you hover or tweak a linked control.
+*   Keeps the preset banks of the seven panel sizes identical.
+
+With SWS installed you can attach it to the *Global Startup Action* so it launches with REAPER.
+
+> Several features are simply inactive while the script is not running: renaming, custom palette colors, GR metering, learning, direct links and value pop-ups. If a menu entry seems to do nothing, check the script first.
+
+### StripTease Check.lua
+
+Run it during playback to diagnose why a meter is inactive. It lists all plugins on the track and tells you how each one's Gain Reduction is read — reported natively, read through a parameter, or measured by the panel — and, for a plugin that reports nothing, why the panel cannot stand in for it. When the panel does measure, it also says whether that happens at the audio rate through a container or through the slower track-meter fallback.
+
+### StripTease Panel Builder.lua
+
+Builds a panel for you instead of laying it out by hand. Select a track, run the script, pick a plugin from the chain: it lists every parameter the plugin declares, you tick the ones you want, and it drops a finished panel on the track — elements typed after what each parameter really is, placed, named, coloured, and already linked to the plugin. Not a single *Learn plugin parameter* to run.
+
+A radio button is laid down only where the source control genuinely enumerates its positions; a knob with detents stays a knob. The links are written straight into the panel's serialized state, so `StripTease System.lua` picks them up like any other Direct Link.
+
+> It needs the **ReaImGui** extension for its window (*Extensions > ReaPack > Browse packages*, search for `ReaImGui`). Without it the script says so and stops, rather than failing silently.
+
+### Panels
+
+Pick the panel height that suits your mixer in the FX browser. Whatever size you choose you can add up to **100 elements**; the panel scrolls when the content is taller than the module. If a layout ends up cramped you have three ways out: split it over **tabs**, widen the grid to more columns, or use **Copy layout & links** to paste the whole thing into a taller panel — layout, links and recipe come along.
+
+**Presets are shared by all seven panel sizes.** REAPER stores user presets per plugin, and each panel height is a separate plugin to REAPER — so, left alone, a preset saved on the 300 px module would only ever show up on the 300 px module. `StripTease System.lua` keeps the seven preset banks identical, so any preset you save from any size is immediately available from every other size. Nothing to export or import; the only requirement is that the script is running when you save the preset. Renaming or deleting a preset applies to all sizes too. See section 8.
+
+
 
 ---
 
