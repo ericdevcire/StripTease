@@ -1,7 +1,6 @@
-
 # STRIPTEASE User Manual
 
-**Version 1.2.0** — see the [changelog](Changelog.md) for what changed.
+**Version 1.2.1** — see the [changelog](Changelog.md) for what changed.
 
 Welcome to the comprehensive guide for the StripTease system in REAPER. StripTease turns any REAPER track into a customizable console strip: knobs, switches and Gain Reduction meters that live directly in the mixer (MCP), drive your real plugins, and travel with your presets and track templates.   
 StripTease is vibe-coded.
@@ -37,524 +36,290 @@ StripTease is freeware. You may use it for your personal workflow. Selling, comm
 
 ## Credits
 
-**Gain-reduction estimation — thanks to RobKor.** When a compressor reports its reduction nowhere, StripTease estimates it by comparing the levels on either side of the plugin (section 6, *Measured by the panel itself*). That method is borrowed from the **StripLink Aggregator** by **RobKor** (Wormhole Labs): a fast peak envelope taken on each side of the compressor, an adaptive estimate of the static makeup gain in between, and the difference between the two read as the reduction. StripTease reimplements it in its own way — per block rather than per sample, over its own shared-memory probes — but the approach and its calibration come from there, and credit is due. Thanks to RobKor for publishing it in the open.
-  
-Go and use his STRIPLINK here : https://forum.cockos.com/showthread.php?t=309941&highlight=striplink
+**Gain-reduction estimation — StripLink inspiration (RobKor / Wormhole Labs) on earlier versions.**  
+In earlier versions of StripTease (up to v1.2.0), the concept of estimating gain reduction by comparing levels on either side of a silent plugin was borrowed from the **StripLink Aggregator** by **RobKor** (Wormhole Labs). Check out his STRIPLINK project here: https://forum.cockos.com/showthread.php?t=309941&highlight=striplink
+Starting with **v1.2.1**, the Gain Reduction measurement engine has been completely redesigned and rebuilt from the ground up with a custom audio-rate JSFX DSP core (sub-chunk RMS energy ratio, 2D level/gain histogram linear regression for rest gain, 700 Hz dual-band split spectral validation, PDC latency alignment, and dry/wet mix inversion), fully replacing the earlier implementation. 
   
   
 ## 1. What's in the package
 
 | File | Role |
 | --- | --- |
-| `StripTease Panel 050 / 100 / 150 / 200 / 300 / 400 / 600 px` | The seven JSFX panels. Identical engine, only the fixed height changes. |
-| `striptease_panel.jsfx-inc` | The shared engine imported by all seven panels. Not loaded directly. |
-| `StripTease.jsfx` (*StripTease GR*) | Superseded — the panel now measures Gain Reduction on its own (section 6). Still shipped so that older projects using it keep working; there is no reason to reach for it in a new one. |
-| `StripTease System.lua` | Background script. Required for Gain Reduction, Direct Link, renaming, custom colors and preset sharing. |
-| `StripTease Check.lua` | Diagnostic script: tells you how each plugin's Gain Reduction is read, or why it is not. |
-| `StripTease Panel Builder.lua` | Builds a whole panel from a plugin's parameters, already linked. Needs the **ReaImGui** extension. |
-| `StripTease Install FX chains.lua` | Copies the bundled FX chains into your `FXChains/` folder, asking before it overwrites anything. |
-| `FXChains/*.RfxChain` | Twelve ready-made FX chains (panel + plugin, already mapped), one of them wired as a container so a compressor that reports nothing is still metered. |
+| `StripTease Panel 050 / 100 / 150 / 200 / 300 / 400 / 600 px` | Seven JSFX panel modules. Identical features; only the vertical height differs. |
+| `striptease_panel.jsfx-inc` | Shared engine imported by all panels. Do not load directly. |
+| `StripTease.jsfx` (*StripTease GR*) | Passive GR monitor. Mirrors `gmem` reduction values to REAPER's track meter (`ext_gr_meter`). |
+| `StripTease System.lua` | Background service. Required for Gain Reduction, Direct Link, renaming, custom palettes, and preset sharing. |
+| `StripTease Check.lua` | Diagnostic tool: inspects plugin GR routing (native, parameter, measured) and manual overrides. |
+| `StripTease Panel Builder.lua` | Automatically builds a mapped panel from a plugin's parameters. Requires **ReaImGui**. |
+| `StripTease Install FX chains.lua` | Copies bundled FX chains to your REAPER `FXChains/` folder. |
+| `FXChains/*.RfxChain` | Twelve pre-mapped chains (panel + plugin), including container-routed examples. |
 
 ### Installation
 
-**Method 1: Using ReaPack (Recommended)**
-The easiest way to install and keep StripTease up to date is via ReaPack.
-1. In REAPER, go to **Extensions > ReaPack > Import a repository**.
-2. Paste the following URL: `https://raw.githubusercontent.com/ericdevcire/StripTease/main/index.xml`
-3. Go to **Extensions > ReaPack > Browse packages**, search for `StripTease`, right-click on it and select **Install**.
-4. Click **Apply** in the bottom right corner.
-5. In the mixer, enable **Show embedded UI in MCP** on the panel's FX slot so the StripTease interface is visible in your mixer strip.
+**Method 1: ReaPack (Recommended)**
+1. In REAPER: **Extensions > ReaPack > Import a repository**.
+2. URL: `https://raw.githubusercontent.com/ericdevcire/StripTease/main/index.xml`
+3. **Extensions > ReaPack > Browse packages**, install **StripTease**, and click **Apply**.
+4. Right-click the panel FX slot in the mixer and check **Show embedded UI in MCP**.
 
 **Method 2: Manual Installation**
-*   Copy the panels, `striptease_panel.jsfx-inc` and `StripTease.jsfx` into `<REAPER resource path>/Effects/StripTease/` (the provided FX chains expect exactly this folder name).
-*   Put the `.lua` scripts anywhere REAPER can reach them — `<REAPER resource path>/Scripts/`, or simply next to the JSFX in `Effects/StripTease/` — and add them via *Actions > Show action list > New action > Load ReaScript*.
-*   Copy the `.RfxChain` files into `<REAPER resource path>/FXChains/` if you want the ready-made chains.
-*   In the mixer, enable **Show embedded UI in MCP** on the panel's FX slot.
-
-### StripTease System.lua
-
-Run it once; it stays in the background and handles everything the JSFX cannot do by itself:
-
-*   Finds every compressor or gate on your tracks that reports its gain reduction — to REAPER through `GainReduction_dB`, or through a parameter named after it, or through one it learned to read — and feeds the GR meters. For a compressor that reports nothing, it tells the panel to measure the reduction itself when the chain allows it.
-*   Maintains the **Direct Links** between panel elements and real plugin parameters (both directions).
-*   Rebuilds links from **recipes** when a preset, track template or FX chain is loaded.
-*   Serves the **Rename** dialog, the **Palette** color picker, and the value pop-up shown when you hover or tweak a linked control.
-*   Keeps the preset banks of the seven panel sizes identical (see section 8).
-
-With SWS installed you can attach it to the *Global Startup Action* so it launches with REAPER.
-
-> Several features are simply inactive while the script is not running: renaming, custom palette colors, GR metering, learning, direct links and value pop-ups. If a menu entry seems to do nothing, check the script first.
-
-### StripTease Check.lua
-
-If a compressor's Gain Reduction doesn't show up on a meter, run this script while the project is playing. It lists all plugins on the track and tells you how each one's Gain Reduction is read — reported natively, read through a parameter, or measured by the panel — and, for a plugin that reports nothing, why the panel cannot stand in for it. When the panel does measure, it also says whether that happens at the audio rate through a container or through the slower track-meter fallback.
-
-### StripTease Panel Builder.lua
-
-Builds a panel for you instead of laying it out by hand. Select a track, run the script, pick a plugin from the chain: it lists every parameter the plugin declares, you tick the ones you want, and it drops a finished panel on the track — elements typed after what each parameter really is, placed, named, coloured, and already linked to the plugin. Not a single *Learn plugin parameter* to run.
-
-A radio button is laid down only where the source control genuinely enumerates its positions; a knob with detents stays a knob. The links are written straight into the panel's serialized state, so `StripTease System.lua` picks them up like any other Direct Link.
-
-> It needs the **ReaImGui** extension for its window (*Extensions > ReaPack > Browse packages*, search for `ReaImGui`). Without it the script says so and stops, rather than failing silently.
-
-### Panels
-
-Pick the panel height that suits your mixer in the FX browser. Whatever size you choose you can add up to **100 elements**; the panel scrolls when the content is taller than the module. If a layout ends up cramped you have three ways out: split it over **tabs** (section 3.7), widen the grid to more columns, or use **Copy layout & links** to paste the whole thing into a taller panel — layout, links and recipe come along.
-
-**Presets are shared by all seven panel sizes.** REAPER stores user presets per plugin, and each panel height is a separate plugin to REAPER — so, left alone, a preset saved on the 300 px module would only ever show up on the 300 px module. `StripTease System.lua` keeps the seven preset banks identical, so any preset you save from any size is immediately available from every other size. Nothing to export or import; the only requirement is that the script is running when you save the preset. Renaming or deleting a preset applies to all sizes too. See section 8.
-
-
-
-## 2. The elements
-
-| Element | What it does |
-| --- | --- |
-| **Knob** | Rotary control, 0–127. Drives a linked plugin parameter through Direct Link, sends a MIDI CC, or both at once. |
-| **Toggle** | On/off switch (0 / 127), with an optional separate label for the ON state. |
-| **Radio** | Multi-position selector, 2 to 6 steps, horizontal or vertical. |
-| **GR meter** | Needle VU showing **gain reduction or a level** (one at a time), with a calibration screw. |
-| **Stereo VU** | Two-column level meter, left and right side by side, with a clip indicator at the top of each. Levels only — gain reduction is mono at the source. |
-| **GR bar** | Bar-graph gain reduction meter, horizontal or vertical. |
-| **Separator** | Horizontal line to group controls. |
-| **Title** | Standalone text label. |
-
-**The three controls are interchangeable.** A knob, a toggle and a radio carry the same things — a CC, a channel, a name, a Direct Link — so any of them converts into either of the others from its menu, keeping all of it (*Change to...*, section 3.2). Picking the wrong one when you lay out a strip costs nothing.
-
-New knobs, toggles and radios are automatically assigned the first free CC number and named after it (`CC 12`); changing the CC of a still-auto-named element renames it accordingly. As soon as you rename it manually, the name stops following the CC.
-
-> **Put the panel above the plugins it drives by CC.** MIDI emitted by a JSFX only travels *down* the FX chain, so a plugin sitting **before** the panel never receives its CC, and the knob silently stops driving it. Move the panel to the top of the chain, or move the plugin below it. **Direct Link is not affected** — it drives the plugin through the REAPER API, so it works from any position.
-
-Separators, titles and meters are inert during playback: clicks pass through them, so they never get in the way of a nearby knob. They only become grabbable in **Edit mode**.
-
-
-
-## 3. Menu reference
-
-Right-click anywhere in a panel. Clicking on an element opens that element's menu; clicking on the background opens the panel menu; clicking a tab opens the tab menu. Menus adapt to the element type — the lists below are exhaustive.
-
-Every element menu, whatever the type, ends with the same block — **Edit mode**, then **Copy element** (or **Copy selection (N)**), **Paste (N)**, **Select**, then **Duplicate**, **Delete** — preceded by **Tab: ...** when tabs are on. The copy entries are described in section 3.8.
-
-### 3.1 Background menu
-
-**Adding elements** (the new element lands where you right-clicked, if the cell is free — and on the page currently open, when tabs are on)
-
-*   **Add knob**
-*   **Add toggle**
-*   **Add radio**
-*   **Add GR meter** — lands centred on the panel, whatever else it contains.
-*   **Add Stereo VU** — two-column level meter (section 3.3).
-*   **Add GR bar... > Horizontal / Vertical**
-*   **Add separator**
-*   **Add title**
-
-**Display & layout**
-
-*   **Edit mode** — Enables moving and resizing elements by dragging: drag to move, **Shift + drag up to grow, down to shrink**. A yellow `EDIT` label and the alignment grid are shown while active. Also where multiple selection lives (section 3.8).
-*   **Show names** — Globally shows/hides the labels under the controls.
-*   **Show knob rings** — Globally shows/hides the colored value ring around knobs.
-*   **Scroll group: ...** — *Independent*, *Group A*, *B*, *C*, *D*. Panels in the same group scroll together, which is invaluable when you have many tracks: scroll one strip and the whole group follows. When tabs are on, the group also turns its pages together (section 3.7). A radio on the panel can take this over and put the choice on the surface — see *Selects scroll group* in section 3.2; while one is armed, this menu writes into it and the groups it cannot reach are greyed out here.
-*   **Color...** — Background color of the panel: **Palette...** (custom color picker) plus White, Light gray, Gray, Dark gray, Dark, Green, Red, Blue, Yellow, Orange, Pink.
-*   **Grid: N columns...** — 1 to 4 columns. Changing it re-flows the existing layout.
-*   **Fit grid to elements** — Re-sizes the grid cell to the largest element on the panel, so nothing overlaps any more. The grid does *not* follow element sizes on its own (see below); this is the one entry that makes it catch up. Positions are unchanged — they are stored as fractions of a cell, so the layout keeps its shape and only its spacing changes.
-*   **Tabs...** — *Off*, *2 pages*, *3 pages*, *4 pages*. Splits the panel into pages, selected by a row of buttons across the top. See section 3.7.
-
-**Clipboard**
-
-*   **Copy layout & links** — Copies the whole panel (elements, names, colors, grid columns and cell size, tabs and their names, links and the preset recipe) to a global clipboard shared by every StripTease panel.
-*   **Paste layout & links** — Pastes it into the current panel. Greyed out when the clipboard is empty.
-*   **Copy selection (N)** — Copies the selected elements to the element clipboard, separate from the layout one. Greyed out when nothing is selected. See section 3.8.
-*   **Paste elements (N)** — Pastes them, top-left corner of the batch landing on the cell you right-clicked. Greyed out when the element clipboard is empty.
-*   **Clear selection** — Deselects everything.
-
-**Preset links** (see section 7)
-
-*   **Preset links: N on \<plugin\>** — Status line: how many links the current recipe holds and for which plugin. Reads *none yet* or *forgotten* when there is no recipe.
-*   **Capture links now** — Forces the panel to read the track and build the recipe immediately. Greyed out when there is nothing to capture.
-*   **Forget preset links** — Clears the recipe so the links won't travel with the preset.
-
-**Reset**
-
-*   **Reset All Positions** — Sends every knob, toggle and radio back to its default value (0, 64 for bipolar, 127 for *Init at max*), and resets the trim of every meter to 0.
-*   **Resend all CCs** — Re-broadcasts every current value, to resync a plugin that lost state.
-*   **Clear all** — Deletes every element on the panel. **Cannot be undone.**
-
-### 3.2 Knob / toggle / radio menu
-
-*   **Rename  (current name)...** — Opens a text dialog (needs `StripTease System.lua` running).
-*   **Rename (ON)  (current name)...** — *Toggles only.* Label displayed while the toggle is engaged.
-*   **CC number  (CC n)...** — MIDI CC 0 to 127, presented in eight submenus of sixteen.
-*   **MIDI channel  (ch n)...** — *All channels* or channel 1 to 16.
-*   **Color...** — **Palette...** (custom color) plus the eleven presets listed above.
-*   **Size...** — Tiny, Small, Medium, Large, Very large, Huge. In Edit mode, **Shift + drag up/down** sizes by hand, between and beyond these presets (section 4).
-*   **Change to... > Knob / Toggle / Radio** — Converts the control to another of the three types, in place. The cell, the CC number, the MIDI channel, the color, the size, the name, the page **and the Direct Link** all stay as they are: only the way the value is shown and grabbed changes. The type-specific flags do not carry over — *Momentary*, *Bipolar*, *Init at max* and the scroll-group role start again at the defaults of the type you land on. A radio dropped onto a linked stepped parameter picks up that parameter's own positions.
-*   **Positions  (n)...** — *Radios only.* 2 to 6 steps.
-*   **Vertical** — *Radios only.* Switches the row of buttons to a column, counted **from the bottom up**: the first position sits at the bottom and the values climb, the way a rotary selector or a fader reads.
-*   **Selects scroll group  (A-x)** — *Radios only.* Turns the radio into the panel's scroll-group selector: its positions stand for *Group A*, *B*, *C*, *D* in order — two positions give A and B, four give A to D. While it is armed the radio has the last word, the panel's own *Scroll group* menu only writes into it, and the entries it cannot reach are greyed out there. Only one radio at a time can hold the wheel: arming a second disarms the first. Disarm it and the radio goes back to being an ordinary control, positions and all.
-*   **Momentary** — *Toggles only.* The switch stays ON only while the mouse button is held.
-*   **Bipolar** — *Knobs only.* Default/reset value becomes 64 and the ring fills from the center — for pan, EQ gain, etc.
-*   **Init at max** — *Knobs only.* Default/reset value becomes 127.
-*   **Learn plugin parameter...** — Starts the Direct Link listening mode (section 5).
-*   **Re-learn plugin parameter...** / **Clear plugin link** — Shown instead, once the element is linked.
-*   **Tab: (name)...** — *Tabs on only.* Moves the element to another page.
-*   **Edit mode**, **Duplicate**, **Delete** — Duplicate copies size, color, flags, page, name and, for a toggle, its ON name; the copy gets its own free CC.
-
-### 3.3 GR meter and stereo VU menu
-
-Both read from the same menu; what differs for the stereo VU is listed at the end.
-
-*   **Rename  (name)...**
-*   **Measure  (Gain reduction)...** — What the needle shows, one at a time:
-    *   **Gain reduction** — dB of compression (default).
-    *   **Input level** — level measured by the panel itself, at its own position in the FX chain. Put the panel at the top of the chain and it reads the strip's input.
-    *   **Output level** — level leaving the FX chain, before the fader.
-
-    Neither level mode needs anything installed on the track. The caption under the needle reads `COMPRESSION`, `INPUT` or `OUTPUT` accordingly, and the small **`GR` / `IN` / `OUT`** word at the bottom right of the meter, next to the trim screw, is clickable — it cycles through the three without opening the menu.
-*   **Reference  (0 dBFS)...** — *Level modes only.* Which level the `0` of the dial stands for: **0 dBFS** (full scale, default), **−9**, **−12**, **−14**, **−18** or **−20 dBFS**. Pick −18 and a signal peaking at −18 dBFS parks the needle on 0, with the red zone starting there — the usual way to work with headroom on a channel strip. The numeric readout follows the same reference.
-*   **Source  (Compressor n)...** — Which plugin on the track the meter reads: **Compressor 1**, **Compressor 2** or **Gate 1**, counted in FX-chain order. Only shown in *Gain reduction* mode — the level modes have a single measurement point and ignore it. When the script knows the track, sources with no matching plugin are flagged `-- none`. Gates are identified by keywords in the plugin name (*gate*, *expander*, *Pro-G*); a gate detected as a compressor is simply read as the corresponding Compressor number.
-*   **Linear** / **Exponential** — Scale of the dial. In gain reduction mode: `0 4 8 12 16 20` or `0 2 4 6 10 20`. In level mode the dial reads dBFS over a 40 dB window: `-40 -32 -24 -16 -8 0` or `-40 -20 -10 -5 -2 0`. In both cases the needle rests on the left and swings right as the reading grows.
-*   **Color...** — Palette + eleven presets.
-*   **Size  (n px)...** — Tiny 90 px, Small 105 px, Medium 120 px, Large 150 px, Very large 180 px, Huge 210 px. In Edit mode, **Shift + drag up/down** sizes by hand (section 4).
-*   **Show value** — Numeric dB readout under the needle: reduction in gain reduction mode, level in dBFS (negative) in level mode.
-*   **Peak hold** — Holds the extreme reading for a moment — maximum reduction, or loudest peak.
-*   **Tab: (name)...** — *Tabs on only.*
-*   **Edit mode**, **Duplicate**, **Delete** — Duplicating a meter keeps its mode, its source and its trim.
-
-**What differs on a stereo VU**
-
-*   **Measure** offers **Input level** and **Output level** only — no *Gain reduction*. A compressor reports one reduction figure for the whole plugin, not one per channel, so two identical columns would say nothing a single needle does not. A new stereo VU starts on *Output level*, and the clickable **`IN` / `OUT`** word cycles between the two.
-*   **Reference** always applies, since the meter is always reading a level: it sets which level the `0` of the scale stands for (0 dBFS down to −20 dBFS).
-*   **Size** is read as a **height** — the width follows from it, two narrow columns side by side, rather than the needle meter's much wider dial. The px figure in the menu reflects that.
-*   **Clip indicator.** The band at the top of each column turns red as soon as that channel goes above the `0` of the displayed scale, and stays lit for about two seconds after the last peak — long enough to be seen on a source that only publishes thirty times a second. **Clicking the meter rearms it** without waiting. The part of the column above `0` is red as well, but that one simply follows the level down, with no hold.
-*   **Show value** prints the level of each channel under its column, at the same body size as the element labels.
-
-### 3.4 GR bar menu
-
-*   **Rename  (name)...**
-*   **Source  (Compressor n)...** — Same list as the GR meter.
-*   **Linear / Exponential** — Same two scales.
-*   **Color...** — Palette + eleven presets.
-*   **Size  (n px)...** — Tiny 36 px, Small 48 px, Medium 60 px, Large 72 px, Very large 96 px, Huge 120 px. In Edit mode, **Shift + drag up/down** sizes by hand (section 4).
-*   **Vertical** — Flips the bar between horizontal and vertical.
-*   **Peak hold**
-*   **Tab: (name)...** — *Tabs on only.*
-*   **Edit mode**, **Duplicate**, **Delete**
-
-### 3.5 Title and separator menus
-
-*   **Rename title  (text)...** — *Titles only.*
-*   **Color...** — Palette + eleven presets.
-*   **Tab: (name)...** — *Tabs on only.*
-*   **Edit mode**, **Duplicate**, **Delete**
-
-### 3.6 Palette (custom colors)
-
-Every **Color...** submenu starts with **Palette...**, which opens the operating system color picker and assigns the exact RGB you choose — to a single element or to the panel background. StripTease adapts the contrast of labels and rings to the luminance of your color automatically. Take as long as you like in the picker: the panel waits until you close it.
-
-This entry needs `StripTease System.lua` running, and the picker itself comes from the **SWS extension**. Without SWS, StripTease says so once and the entry does nothing — the eleven preset colors stay available. If the service is not running at all, the element flashes `NO ANSWER` after five seconds.
-
-### 3.7 Tabs
-
-A panel can spread its elements over 2 to 4 pages, so a long strip becomes a few short ones instead of one you have to scroll.
-
-Turn them on from **Tabs...** in the background menu. A row of buttons appears across the top of the panel — click one to switch pages. Send an existing element to another page with **Tab: ...** in its own menu; anything you add lands on whichever page is open at the time.
-
-**Tab menu** — right-click a tab:
-
-*   **Rename tab  (name)...** — Free text, up to 12 characters. Needs `StripTease System.lua`, like every other rename.
-*   **Reset tab name** — Back to the plain number. Greyed out when the tab has no name of its own.
-*   **Tabs...** — The same submenu as in the background menu, so you can change the number of pages without leaving the row.
-
-What to expect:
-
-*   **Pages divide the display, not the wiring.** A control parked on a page you are not looking at keeps its value, keeps sending its CC, keeps its automation and keeps its Direct Link. Hiding it changes nothing but what you see — which is exactly what makes tabs safe for controls you have set once and don't want to touch again.
-*   **Pages may overlap in the grid.** That is the whole point: page 2 can reuse the cells page 1 occupies. The consequence is that turning tabs off, or reducing the number of pages, brings everything back together and re-flows whatever now shares a cell. Positions move; nothing is lost, and no element ever becomes unreachable.
-*   **Moving an element to a busy cell.** If the cell it sits on is already taken on the destination page, it lands on the first free cell there instead of stacking.
-*   **Each page keeps its own scroll position.** Leave page 1 halfway down, go to page 2 and come back: you land where you left it. This is session state — reopen the project and each page starts at the top.
-*   **Scroll groups turn the pages together.** Panels set to the same group (A, B, C, D) already scroll as one; they switch pages as one too. Click a tab on any of them and the whole group follows, at that page's remembered scroll position. A panel with fewer pages stops at its own last one without dragging the rest back, and a panel set to *Independent* is left alone. Note that **Group A is the default**, so several panels will move together until you set one to *Independent*.
-*   **The row costs height.** About 34 px, taken off the scrolling area — worth weighing on the 050 and 100 px panels.
-
-### 3.8 Selecting and copying elements
-
-**Copy layout & links** replaces a whole panel. This one moves a handful of elements instead, and it goes wherever you want: another page, another panel, another track.
-
-**Selecting** — In **Edit mode**, **Shift + click** an element to select it; a fixed blue ring marks it, the same outline the learn animation uses. Shift-click again to deselect. **Shift + drag** still resizes, as before: the gesture only counts as a selection if you release without moving (a few pixels of slack). **Select** in an element's menu does the same thing without the modifier, and switches Edit mode on so you can see the ring. The selection is not saved with the project, and leaving Edit mode clears it.
-
-**Dropping the selection** — A plain click, no Shift, on the background or on an element that is *not* selected clears the whole selection: you are now working on that one element. Clicking an element that *is* part of the selection keeps it — that click is the start of a group move. **Clear selection** in the background menu does it from the menu.
-
-**Moving a selection** — Drag any element of the selection and the whole batch follows the same offset, so the arrangement you built is preserved rather than rebuilt element by element. The step is all or nothing: if a single element of the batch would leave the grid or land on a cell held by an outsider, the whole step is refused. Cells held by the batch itself are not obstacles — they are vacated by the same move. Only the elements on the page currently open move; anything selected on another page stays where it is, since there is no comparable cell to move it to.
-
-**Copying** — **Copy element** in an element menu takes that one element. When the element you right-click belongs to a selection of two or more, the entry reads **Copy selection (N)** and takes the whole batch. From the background menu, **Copy selection (N)** does the same. Each element travels with its name (and ON name), color, size, flags, CC channel, current value and Direct Link.
-
-**Pasting** — **Paste** from an element menu drops the batch on the first free cells. **Paste elements** from the background menu puts the top-left corner of the batch on the cell you right-clicked and rebuilds the shape around it; any cell already taken sends that element to the first free one instead of stacking. The batch always lands on the page currently open, whichever page it was copied from, and the copies become the new selection.
-
-What comes along, and what doesn't:
-
-*   **CCs are kept when they are free.** A copy pasted into a panel that already uses that CC gets the first free one instead — otherwise the two controls would move together. An automatic `CC nn` name follows the new number; a name you typed is left alone.
-*   **Direct Links only survive where they mean something.** They are rebuilt if the destination panel already targets the same plugin, or if it targets none yet — in which case it adopts the plugin of the batch. Paste into a panel wired to a different plugin and the elements arrive unlinked rather than pointing at the wrong parameters. Links rebuild through the recipe, so `StripTease System.lua` has to be running (section 7).
-*   **The clipboard is global and it persists.** It is shared by every StripTease panel in the REAPER session, holds one batch at a time, and survives closing the panel you copied from.
-*   **A full panel takes what it can.** Pasting into a panel with fewer free slots than the batch fills the slots available and drops the rest.
-
-
-
-## 4. Mouse & keyboard
-
-### Normal mode (playing)
-
-| Gesture | Result |
-| --- | --- |
-| Drag up/down on a knob | Change the value |
-| **Ctrl** + drag on a knob | Fine adjustment (≈ 3× slower) |
-| Double-click a knob | Reset to its default (0, or 64 bipolar, or 127 *Init at max*) |
-| Wheel over a knob, when the panel cannot scroll | ±1 step, or ±1 detent on a knob linked to a stepped parameter |
-| **Ctrl** + wheel over a knob | Same, even when the panel scrolls |
-| **Ctrl + Shift** + wheel over a knob | ±5 steps, or ±5 detents |
-| Click a toggle | Flip it — or hold it, if *Momentary* is on |
-| Click / drag on a radio | Select the position under the mouse |
-| Drag the VU calibration screw | Trim the meter, −20 to +20 dB in 0.5 dB steps — an offset in level mode, a sensitivity in GR mode (the reading shows `TRIM +x.x`) |
-| Double-click the VU screw | Reset the trim to 0 |
-| Click a stereo VU | Rearm its clip indicator without waiting for the hold to run out |
-| Click the VU `GR` / `IN` / `OUT` label | Cycle the measurement — gain reduction, input level, output level. A stereo VU cycles between `IN` and `OUT` only |
-| Wheel over the panel | Scroll the panel |
-| **Shift** + wheel | Scroll faster |
-| Drag the background, or the right-edge scrollbar | Scroll the panel |
-| Hover or tweak a linked control | Pop-up with the real value read from the target plugin |
-| Click a tab | Switch page |
-| Right-click a tab | Rename it, or change the number of pages |
-| Right-click | Contextual menu |
-
-A click slightly off a control still grabs the nearest one, so small knobs stay easy to catch in a dense strip.
-
-### Edit mode
-
-| Gesture | Result |
-| --- | --- |
-| Drag an element | Move it. Position snaps to a 1/8-cell grid, so elements can be tucked between columns and rows. With tabs on, an element only moves within its own page — use **Tab: ...** to send it elsewhere. Drag an element that belongs to a selection and the whole selection follows (section 3.8). |
-| Click an element, or the background | Clears the selection, unless you clicked an element that is part of it (section 3.8). |
-| **Shift** + drag **up** | **Makes the element bigger.** |
-| **Shift** + drag **down** | **Makes it smaller.** |
-| **Shift** + click | Select / deselect the element for a batch copy — a blue ring marks it (section 3.8). The gesture is only read as a selection if you release without moving; move first and it is a resize. |
-| Right-click | Same menus as usual |
-
-**Resizing by hand.** Hold **Shift** and drag vertically: up grows, down shrinks. It is continuous, so it goes anywhere between and beyond the *Size...* presets, over a range of 5 to 64 — a few pixels of travel per step, the exact figure depending on the display scaling. The size means whatever the type calls size: knob diameter, toggle width, radio cell, VU or bar length. **Separators are the exception** — they have nothing to size, so Shift + drag just moves them like a plain drag. Nothing marks the element while you resize; watch the element itself, and use the *Size...* menu if you want a known value back.
-
-**Resizing never moves anything else.** The grid cell has its own size, and it does not follow the elements: growing a knob past its cell simply makes it overlap its neighbours, and everything around it stays exactly where you put it. Move the element afterwards if the overlap bothers you, or run **Fit grid to elements** (background menu) to open the grid back up around the largest element — that one does re-space the whole panel, which is why it is a deliberate choice rather than something that happens under your hand.
-
-The grid cell is set when the panel is created, saved with it, and carried along by **Copy layout & links**. Panels made before this behaviour existed keep the spacing they had: their grid is measured from their content the first time they load, then frozen.
-
-The alignment grid drawn in edit mode marks eighths, quarters and whole cells with increasing brightness. Layouts made with older versions are converted automatically to the finer grid the first time they load.
-
-
-
-## 5. Parameter Linking (Direct Link)
-
-StripTease offers a Direct Link system that completely bypasses REAPER's native MIDI CC or Parameter Modulation limits. The panel controls the plugin, and if you move the plugin's GUI the panel updates instantly (bidirectional sync). **This is the way to connect a control to a plugin** — the MIDI CC a control sends is a plain one-way output, with no feedback and no value pop-up. A link does not silence that CC: a control can drive one plugin through Direct Link and another through MIDI learn at the same time.
-
-Once a parameter is mapped, the source value is displayed in a small pop-up when you hover or tweak the control, so you read the actual data from the targeted plugin.
-
-**The method to link correctly:**
-
-1. Ensure the background script (`StripTease System.lua`) is running.
-2. In the StripTease panel, right-click the knob, toggle or radio you want to link.
-3. Select **Learn plugin parameter...**. The element starts flashing to indicate it is listening.
-4. Open the FX window of the plugin you want to control (it must be on the same track).
-5. Move the parameter you want to link (click and drag it slightly with your mouse).
-6. The element stops flashing and displays a success message. The link is now active in both directions.
-
-Learning times out after about 20 seconds, and any click in the panel cancels it. To remove a link, right-click the element and select **Clear plugin link**; to point it somewhere else, use **Re-learn plugin parameter...**.
-
-Direct Link applies to knobs, toggles and radios. Meters are fed by the GR system instead (section 6). Plugins inside FX containers are supported.
-
-**Stepped parameters.** When the target parameter moves in steps rather than continuously — a filter slope, an oversampling factor, a mode switch — the linked knob adopts exactly those steps. It detents to the same positions the plugin has, the wheel advances a whole step per notch instead of a fraction too small to change anything, and the value under the pointer is the one the plugin actually kept. Nothing to set up: the panel picks the step count up from the target as soon as the link exists, and goes back to a continuous sweep if you clear it. Parameters with more than about 500 steps are treated as continuous, where a detent would be too fine to feel anyway.
-
-
-### Driving a panel from a hardware MIDI controller
-
-A control sends its CC downstream, but it does not listen to MIDI on its own. To move a panel control from a physical knob or fader, use REAPER's own MIDI learn on that control — the panel's elements are ordinary FX parameters, so REAPER can bind them like any other. This path is global: it is fed by the devices ticked **Enable input for control messages** in *Preferences → MIDI Devices*, and needs no armed track, no MIDI input routing and no monitoring.
-
-1. Tick your controller under *Preferences → MIDI Devices* → **Enable input for control messages**.
-2. In the panel, move the knob, toggle or radio you want to drive. It is now REAPER's last touched parameter.
-3. Run the action **FX: Set MIDI learn for last touched FX parameter**.
-4. Move the physical control. REAPER binds it.
-
-Tick **Soft takeover** in that dialog when the physical control's position does not match the one on screen — without it the value jumps to the hardware position at the first movement.
-
-Combined with a Direct Link, this gives the full chain: the physical control moves the panel element, and the element drives the plugin parameter.
-
-```
-hardware controller → MIDI learn → panel element → Direct Link → plugin
-```
-
-The element keeps sending its own CC downstream at the same time, so a plugin below the panel that is MIDI-learned to that CC follows as well.
-
-
-## 6. Metering — gain reduction and levels
-
-A needle meter can show three things, chosen with *Measure...* in its right-click menu: the **gain reduction** of a source, the **input level**, or the **output level**. GR bars always show gain reduction.
-
-For gain reduction, the meter reads a single value per source: **Compressor 1**, **Compressor 2** or **Gate 1**, counted in FX-chain order on the same track as the panel.
-
-### Gain reduction
-
-**Three ways to get that value. All three are automatic — there is nothing to map:**
-
-1. **Natively** — Many plugins report `GainReduction_dB` to REAPER. `StripTease System.lua` picks these up automatically; nothing else to do. Run `StripTease Check.lua` while playing to see which of your plugins qualify.
-
-2. **Through a parameter named after the reduction** — `GainReduction_dB` is only served by the VST hosting side of REAPER: by REAPER's own VST2 extension, and by the VST3 `IGainReductionInfo` interface. **A JSFX never answers it.** A JSFX that sets `ext_gr_meter` does feed REAPER's own track meter — you can watch the reduction move next to the fader — but that path is internal to REAPER's JSFX module and has no script side at all. What REAPER shows there, it lends to no one.
-
-   The one channel a JSFX does share with a script is a parameter. So StripTease also accepts, on a plugin that answers nothing, **a parameter whose name contains *gain reduction*, *GR readout* or *GR meter*, and whose range is graduated** (more than one unit wide). Both conditions together: a control that happens to carry such a name is rarely a readout, so the pair leaves no room for doubt.
-
-   **The unit is established, never assumed.** A graduated range is not necessarily a range in decibels: plenty of readouts are graduated 0..100, which is a percentage of the plugin's own meter. Publishing that as a hundred dB is exactly how a needle ends up disagreeing with the meter it is supposed to mirror, by a different amount on every plugin. So StripTease asks the plugin what it would display at each end of the readout's travel — a read-only question, which changes nothing — and derives the conversion from the answer. If the readout turns out not to be proportional to its own travel, it is read through its display instead. If no decibels can be found at all, the readout is refused rather than published in an unknown unit, and the plugin falls back to being measured by the panel, which compares two levels in dB and cannot get the scale wrong.
-
-   **Learned readouts.** Plenty of plugins do publish their reduction, but under a name the rule above cannot vouch for — *Redux*, *Reduction*, *Compression*, *GR* — and, more often than not, as a normalized 0..1 parameter that spells its dB out only in the displayed text. A name like that proves nothing on its own, so StripTease watches the candidate instead: while the track plays, a reduction readout climbs when the signal gets loud and returns to rest when it goes quiet, which no ordinary control does on its own. A parameter that behaves that way is adopted, and **what is learned is remembered per plugin type** — every instance, in every project afterwards, is read straight away. Automated, linked or modulated parameters are excluded from the start, and a candidate that never settles the question simply stays unused.
-
-   Nothing to set up in either case — the plugin is picked up as *Compressor n* like any other, and `StripTease Check.lua` marks it `[parameter p7 "GR Meter", mode raw]`, adding the scale factor when one was needed, `learned` when the readout came from observation, and the string the plugin itself displays so you can check the reading against it. The value is taken in absolute value, so it makes no difference whether the plugin counts its reduction downwards (−6) or upwards (6); readings beyond 60 dB are clamped. If you write your own JSFX, exposing one such parameter alongside `ext_gr_meter` is all it takes.
-
-3. **Measured by the panel itself** — For a compressor that reports nothing and exposes nothing, StripTease measures the reduction **without adding a single slot to the chain**. The panel is already in the FX chain; all it needs is to see both ends of the compressor at once. The reduction is what separates the two, once the static gain in between is discounted.
-
-   Nothing to insert, nothing to number, nothing to switch on. The plugin appears as the next free *Compressor n* — numbers already taken by reporting plugins never move — and `StripTease Check.lua` shows it as `measured -> Compressor n by the panel`, along with how.
-
-   **The good way: put the compressor in a container.** Right-click it → *Move FX to container*. StripTease recognises the shape, sets the container to four channels, and maps its input pins so that the container's own input is copied onto channels 3 and 4 — no plugin does this, it is pure routing. The panel then holds the compressor's output on channels 1/2 and its input on 3/4, in the same audio block, and measures **at the audio rate**. Attack and release settings show through, and the reading is immune to the fader, the panner and the metering preferences, all of which sit after the container. The compressor's own reported latency is read and used to line the two probes up, so a lookahead design does not throw false spikes on transients.
-
-   The panel can sit in either of two places, and they measure equally well:
-
-   *   **inside the container, as the last item.** The service channels never leave the container and the track stays stereo. But REAPER only embeds a *top-level* FX interface in the MCP, so a panel buried in a container cannot be embedded.
-   *   **right after the container, in the chain itself.** The container hands the tap out on its channels 3 and 4, and StripTease raises the track to four channels to carry it — the one thing this placement costs. The panel stays a top-level FX, so **its interface still embeds in the MCP**. It has to come *immediately* after the container: anything slipped in between would change channels 1/2 without changing 3/4, and its gain would read as reduction.
-
-   **A worked example ships with StripTease**: `StripTease AO The Bus`, built in the second form — *TheBus* (Analog Obsession), which neither automatic route can read, alone in a container with the panel just after it. Drag it in and the needle reads. The two moves are all it takes on any silent compressor: *Move FX to container*, panel immediately below. Drop the panel inside the container instead and it measures just as well; the wiring is redone on the next rescan either way.
-
-   **The fallback, when there is no container.** With the panel simply sitting **above** the compressor in a flat chain, StripTease compares the panel's input to the track meter published for the *Output level* mode. It works and it needs nothing at all, but the track meter is only read about 30 times a second: **that pace is the limit of what the needle can show of the compressor's timing.** Release settings from roughly a tenth of a second upwards read clearly, faster ones all look alike, and an attack quicker than a frame is simply instantaneous. The caveats of *Output level* apply too — a muted track or a fader at −∞ leaves nothing to read, and *Options > Pre-fader track metering* works against the compensation.
-
-   **Conditions, checked automatically in both cases:**
-   *   with a container: the **panel is the container's last item, or the FX immediately after it**, and there is **exactly one silent dynamics plugin** in the container;
-   *   in a flat chain: the **panel sits above the compressor**, and that compressor is the **only silent dynamics below it** — with two of them, one reading could not tell the two reductions apart, so StripTease offers none rather than a wrong one;
-   *   **nothing inside the measured span reports its own reduction.** A plugin that does is read natively, and that reading always wins: its reduction would otherwise be counted twice, once by itself and once inside the measurement, so the measured route stands down.
-
-   **How the static gain is discounted.** When nothing but the compressor separates the two probes, the only static gain between them is its own makeup — so StripTease reads it straight from the plugin, and the reading is right from the first frame. Otherwise it is estimated, by remembering the widest gap seen over the last thirty seconds: correct as soon as the compressor lets go now and then, but a bus compressor that never stops reducing never shows its rest, and the needle then moves correctly while sitting too low. Reading is given up — back to the estimate — when the plugin's **auto makeup** is engaged, and, on the flat-chain fallback only, when the **track panner is off center**. `StripTease Check.lua` says which of the two is in use.
-
-   **How a compressor is recognised.** By its parameters first: a threshold, plus something that says what happens once it is crossed — a ratio, an explicit makeup, or an attack together with a release. That covers designs with no ratio control at all, a Fairchild-style variable-mu among them. Failing that, by name, against a list of about fifty device and plugin names matched on the name stripped of punctuation, so `LA-2A`, `LA 2A` and `CLA2A` are one entry. The list names models, never brands: Tube-Tech and Lindell also make EQs, and an EQ mistaken for a compressor would be given a number and a needle showing nothing real.
-
-   **When a plugin escapes the rules, point at it by hand.** `StripTease Check.lua` says, for every plugin, whether it is filed under dynamics and on what evidence — and where it is not, or where no makeup can be read, it offers to fit it: it prints the full parameter list with values and ranges, and asks which one is the makeup, which is the other side, which is the parallel mix, which is the auto-gain switch. Nothing is stored until those numbers are confirmed. The result is filed **per plugin type**, so every instance in every project follows, and it **survives StripTease updates** — the shipped scripts are regenerated at each version, so a change made in the code itself would not. Blank the makeup field to hand the plugin back to the rules. The running service picks the change up on its own, without being restarted.
-
-   **A parallel mix is undone.** A compressor blending only part of its work into the output reduces the chain by that same fraction, and a needle reading it straight cannot tell a compressor working less from one merely mixed in less. When the makeup is read, StripTease reads the mix control too and inverts the blend, so the needle shows the reduction the compressor *computes* — what its own meter shows. At 100% wet the arithmetic is unchanged, so nothing moves for anyone who does not touch the control. Below about 10% the inversion would amplify measurement noise more than it corrects, and the reading is left to sag gently instead. **At a mix of zero it necessarily reads nothing**: the compressed signal never leaves the plugin, and no comparison of input to output can recover what is not there.
-
-   A compressor **instantiated in mono** on a stereo track is measured on its left channel alone: REAPER only feeds it channel 1, and the right channel goes through untouched.
-
-### Levels
-
-The two level modes watch the audio instead of the compression, and **neither needs anything added to the track**. They differ only by where the measurement is taken:
-
-| Mode | Measured at | How |
-| --- | --- | --- |
-| **Input level** | The panel's own slot in the FX chain | The panel measures the audio flowing through it |
-| **Output level** | End of the FX chain, before the fader | `StripTease System.lua` reads the track meter and undoes the fader |
-
-**The stereo VU reads these same two modes, one column per channel.** Where the needle takes the louder of the two channels and shows a single figure, the stereo VU keeps left and right apart — which is what makes a channel dropping out, or a mono source sitting on one side, visible at a glance. Everything below applies to it unchanged: same measurement points, same pre-fader correction, same reference.
-
-A plugin only ever sees the audio at *its own* position, which is what makes *Input level* positional: put the panel at the top of the FX chain and it reads what enters the strip; move it below a plugin and it reads that plugin's output. *Output level* is the opposite — it always reads the end of the chain, wherever the panel sits.
-
-**About the pre-fader reading.** REAPER's track meter is post-fader, so the script divides it by the track's volume before publishing: moving the fader no longer moves the needle, and what you read is the level leaving your FX chain. Three things to know:
-
-*   A **muted track**, or a fader pulled to −∞, kills the meter REAPER feeds us — there is nothing left to compensate. The mode then reports no data (needle left, orange dot) rather than a misleading −inf.
-*   Panning does not disturb it: REAPER's balance attenuates the opposite channel, and the meter takes the loudest of the two.
-*   If you have turned on **Options > Pre-fader track metering**, REAPER is already giving a pre-fader value and the compensation works against you — turn that option off, or use **Input level** with the panel last in the chain, which measures the same point exactly and ignores every REAPER setting.
-
-### Reading a level
-
-The dial spans **23 dB, from −20 on the left up to +3 on the right**, relative to whatever *Reference* you picked (0 dBFS out of the box), so the needle swings right as the signal gets louder, exactly like the gain reduction scale grows to the right. The last fifth of the dial — from **0 to +3 dB** — is drawn in red, graduations and figures included, so an over is unmistakable. Readings are peak values with a 30 ms release; the numeric readout keeps showing the true level even when the needle is pinned at +3.
-
-When nothing is publishing, the needle sits at the far left, the readout shows `-inf dB` and the small orange dot lights up in the corner. That dot means *no data at all* — the script not running, the track muted, or the FX chain not processing. Real silence gives you the same needle position and `-inf dB`, but **no dot**.
-
-### Reading and adjusting the meter
-
-*   **Scale** — Gain reduction: *Linear* (0 4 8 12 16 20) or *Exponential* (0 2 4 6 10 20), the latter giving more resolution in the first few dB. Levels: *Linear* (−20 −15 −10 −5 0 +3) or *Exponential* (−20 −10 −5 −2 0 +3), the latter giving more resolution near full scale. Both end on the red 0 → +3 zone.
-*   **Reference** — In level mode the dial is calibrated in dBFS by default (0 = full scale). *Reference...* moves that 0 down to −9, −12, −14, −18 or −20 dBFS, so the meter reads your working headroom instead of the distance to clipping. It shifts the dial, the readout and the red zone together.
-*   **Trim** — Drag the screw at the bottom of the needle meter to adjust the reading by up to ±20 dB. On a level meter it offsets the reading, fine-tuning on top of the reference. On a GR meter it sets the sensitivity rather than offsetting the scale — the deflection doubles every 10 dB of screw: +10 reads twice as far, +20 four times, −10 half. The needle still rests on 0 when nothing is being compressed, so the dial always reads from 0 to the top of its scale. It should rarely be needed now that the reading is converted into real decibels at the source — if a GR meter disagrees with the plugin's own by more than a hair, run `StripTease Check.lua` before reaching for the screw: it will say how that plugin is read, and what it reads. Double-click the screw to zero it.
-*   **The GR / IN / OUT switch** — The little `GR`, `IN` or `OUT` word printed at the bottom right of the meter, next to the screw, is clickable: one click cycles the measurement, so you can flip a strip's meter between compression and levels while listening, without going through the right-click menu. It is hidden on meters too small to print it legibly.
-*   **Show value** displays the numeric dB — the reduction, or the level in dBFS (`-inf` below −90). **Peak hold** freezes the maximum reduction, or the loudest peak, for a moment.
-*   Both modes share the same ballistics: the needle has weight. It rises quickly toward a higher reading and falls back more slowly, but it never jumps — a source that publishes in bursts no longer makes it shiver. **Peak hold** is the one that still reacts instantly, so the transient the needle smooths over is still shown.
-
-
-
-## 7. Presets, recipes and plugin mapping
-
-A direct link uses a unique ID (GUID) tied to the specific instance of the plugin on your track. Normally that would mean the link breaks whenever the track is duplicated or a template is loaded. StripTease solves this with **recipes**.
-
-**How recipes work:** when you link a parameter, StripTease remembers the exact instance *and* writes a relative recipe into the JSFX state — the **name of the target plugin** and the **parameter number** for each element. On load, `StripTease System.lua` looks for a plugin with that exact name on the new track and rebuilds every link for the new instance.
-
-> The name used is the plugin's **original** name, so renaming an FX instance in the chain (*Rename FX instance*) does not break the recipe. Recipes captured with an older StripTease still resolve on the name they were stored with; capture them again to store the original one.
-
-**One recipe describes one plugin.** An element learned on a *different* plugin still works (its link is intact), but it does not join the recipe — so it will not travel with the preset. This matters when you derive one preset from another: load "SSL 4000 E", re-learn everything onto an SSL 4000 G, and each re-learn removes that element from the 4000 E recipe. The panel then adopts the 4000 G automatically (within two seconds of the recipe becoming empty), but **the preset you saved before that point carries no links at all** — check the background menu, it must read `Preset links: N on <your plugin>` and not `none yet`, then save the preset again.
-
-**How to create reusable mappings:**
-
-1. Add a plugin (e.g. an EQ or a compressor) to your track.
-2. Add a StripTease Panel JSFX.
-3. Use the Learn method (section 5) to map all the controls you need.
-4. Check that the background menu reads `Preset links: N on <plugin>`.
-5. Save it — as a JSFX preset, an FX chain, or a track template.
-
-Loading it on any other track rebuilds all the bidirectional links automatically. Map your favorite plugins once, and never Learn them again.
-
-### Included FX chains
-
-Twelve ready-made chains are provided in `FXChains/`, each pairing a mapped panel with a specific plugin. 
-
-> [!NOTE]
-> These chains are pre-linked with plugins I use regularly in my own workflow. Even if you don't own these exact plugins, you still get the huge benefit of a fully constructed, ready-to-use panel layout. You can simply load the chain, insert your own preferred plugin, and use the *Learn plugin parameter* function to re-link the existing knobs to your plugin of choice.
-
-| Chain | Plugin | Panel |
-| --- | --- | --- |
-| StripTease SSL4000E | bx_console SSL 4000 E (Plugin Alliance) | 600 px |
-| StripTease SSL4000G | bx_console SSL 4000 G (Plugin Alliance) | 600 px |
-| StripTease SSL9000J | bx_console SSL 9000 J (Plugin Alliance) | 600 px |
-| StripTease BX Glue | bx_glue (Plugin Alliance) | 400 px |
-| StripTease TownHouse Bus | bx_townhouse Buss Compressor (Plugin Alliance) | 300 px |
-| StripTease Bx Opto | bx_opto (Plugin Alliance) | 300 px |
-| StripTease Vertigo VSC-2 | Vertigo VSC-2 (Plugin Alliance) | 300 px |
-| StripTease Pro-C3 | Pro-C 3 (FabFilter) | 300 px |
-| StripTease UAD 610A Pramp | UADx 610-A Preamp and EQ (Universal Audio) | 200 px |
-| StripTease UAD 610B Pramp | UADx 610-B Preamp and EQ (Universal Audio) | 200 px |
-| StripTease UAD DBX 160 | UADx dbx 160 Compressor (Universal Audio) | 200 px |
-| StripTease AO The Bus | TheBus (Analog Obsession) | 200 px |
-
-They expect the panels to be installed in `Effects/StripTease/` and the corresponding plugin to be present; the links rebuild themselves on load.
-
-**`StripTease AO The Bus` is also the worked example of the container setup** (section 6): TheBus publishes no reduction, so it sits in a container with the panel right after, and the panel measures it at the audio rate. Nothing to wire — StripTease does it on rescan. It is the one chain that raises the track to four channels.
-
-
-
-## 8. One preset bank for all panel sizes
-
-The seven panel modules (050 / 100 / 150 / 200 / 300 / 400 / 600 px) only differ by their fixed height — same 100 sliders, same saved state, same engine. Their presets are therefore fully interchangeable, but REAPER files user presets by plugin, and it sees seven different plugins.
-
-`StripTease System.lua` closes that gap: every two seconds it compares the seven preset files REAPER keeps in `<REAPER resource path>/presets/`, and propagates any change to the other six.
-
-*   Save a preset from the 300 px panel → it appears in the preset list of all sizes.
-*   Rename or delete a preset from any size → the change applies everywhere.
-*   A size you have never used yet gets the whole bank the first time the script runs.
-*   Reopen the FX window (or the preset menu) if a brand new preset is not listed yet — REAPER re-reads the file when it changes, but a menu already on screen won't refresh by itself.
-
-Two things stay outside of this: the per-module default preset (*Save preset as default*, which REAPER stores elsewhere), and preset names — a name identifies a preset in the shared bank, so if two sizes happened to hold different presets under the exact same name, only one of them survives the first merge.
-
-
-
-## 9. Limits & good to know
-
-*   **A control does not listen to MIDI by itself** — to drive one from a hardware controller, bind it with REAPER's MIDI learn (section 5).
-*   **CC control is one-way, and only reaches plugins placed below the panel in the FX chain** — MIDI from a JSFX travels downstream only, and nothing comes back: a knob that drives a plugin by CC does not follow it, and shows no value pop-up. Direct Link has neither constraint — it is bidirectional and works from any position (see section 5).
-*   100 elements per panel, 1 to 4 grid columns, up to 4 pages, positions on a 1/8-cell grid.
-*   Scroll groups: Independent plus A, B, C, D.
-*   **Several panels can share one track**, each keeping its own Direct Links and its own recipe.
-*   Only one clipboard, shared by all panels of the session (**Copy / Paste layout & links**).
-*   **Clear all** and **Delete** are not undoable.
-*   The panel follows REAPER's HiDPI scaling automatically.
-*   **The 100 native sliders are never drawn** — a panel shows its own interface and nothing else. They remain full parameters: automation, envelopes, parameter modulation, presets and Direct Link all work exactly as before; only REAPER's generic slider rows are gone.
-*   The tab row costs about 34 px of height, taken off the scrolling area — worth weighing on the 050 and 100 px panels.
-*   Per-page scroll positions are session state: they are not saved with the project, so each page starts at the top when you reopen it. The page you were *on* is saved.
-*   Older layouts are migrated to the current grid on load; saved presets and templates from previous versions keep working. A panel saved before tabs existed opens with tabs off and everything on one page, as it was.
+1. Copy the panels, `striptease_panel.jsfx-inc`, and `StripTease.jsfx` into `<REAPER resource path>/Effects/StripTease/`.
+2. Place the `.lua` scripts in `<REAPER resource path>/Scripts/` and register them via *Actions > Show action list > New action > Load ReaScript*.
+3. Copy `.RfxChain` files into `<REAPER resource path>/FXChains/`.
+4. Enable **Show embedded UI in MCP** on the panel slot.
+
+### Core Scripts
+
+- **`StripTease System.lua`:** Keep running in the background. Handles Direct Link bidirectional synchronization, GR meter routing (native, parameter, or measured audio), recipe link reconstruction, OS color picking, renaming, and cross-size preset synchronization.  
+  *Tip:* Add it to the SWS Global Startup Action (*Extensions > Startup actions*).
+- **`StripTease Check.lua`:** Run during playback to diagnose why a meter is inactive. Reports whether plugins are read natively, via parameter, or measured, and guides manual parameter mapping.
+- **`StripTease Panel Builder.lua`:** Generates complete panels from plugin parameters without manual learning. Requires **ReaImGui**.
+- **Panel Sizing & Presets:** Choose any height (050 to 600 px). Panels support up to **100 elements** and scroll when needed. Presets saved on one size automatically sync across all other six sizes via `System.lua`.
 
 ---
 
+## 2. The Elements
 
+| Element | Description |
+| --- | --- |
+| **Knob** | Rotary control (0–127). Drives plugins via Direct Link, outputs MIDI CC, or both. |
+| **Toggle** | Two-state switch (0 / 127) with optional ON label and momentary mode. |
+| **Radio** | Stepped selector (2 to 6 positions), horizontal or vertical. |
+| **GR meter** | Needle VU meter displaying Gain Reduction, Input Level, or Output Level, with calibration trim. |
+| **Stereo VU** | Dual-column level meter with per-channel clip indicators. |
+| **GR bar** | Horizontal or vertical gain reduction bar graph. |
+| **Separator** | Horizontal dividing line. |
+| **Title** | Text label. |
 
+- **Interchangeability:** Convert any knob, toggle, or radio into another via *Change to...*; links, names, colors, and CCs are preserved.
+- **MIDI Routing vs. Direct Link:** MIDI CCs emitted by the panel only travel **downstream** (place the panel *above* target plugins for CC control). **Direct Link** uses REAPER's API and works bidirectionally from **any position** in the chain.
+- **Click-through:** Titles, separators, and meters ignore clicks during playback to avoid misclicks; edit them in **Edit mode**.
 
+---
+
+## 3. Menu Reference
+
+Right-click any element, background, or tab to open its context menu.
+
+### 3.1 Background Menu
+
+- **Add [element]:** Inserts a knob, toggle, radio, GR meter, Stereo VU, GR bar, separator, or title at the clicked cell.
+- **Edit mode:** Toggles dragging and resizing.
+- **Show names / Show knob rings:** Toggles control labels and colored value rings.
+- **Scroll group:** Assigns *Independent* or *Groups A–D* (panels in the same group scroll and switch tabs together).
+- **Color...:** Panel background color (*Palette...* via OS picker, or 11 presets).
+- **Grid: N columns (1–4):** Changes column layout.
+- **Fit grid to elements:** Expands cell size to accommodate the largest element without overlapping.
+- **Tabs:** Configures 2 to 4 pages.
+- **Clipboard:** *Copy / Paste layout & links* (entire panel), *Copy / Paste selection* (selected elements), *Clear selection*.
+- **Preset links:** Displays active recipe status; *Capture links now* forces recipe creation; *Forget preset links* clears it.
+- **Reset All Positions:** Resets controls to defaults (0, 64 bipolar, or 127 max) and meter trims to 0.
+- **Resend all CCs:** Re-outputs current values to sync downstream hardware/plugins (greyed out during Global MIDI bypass).
+- **Global MIDI bypass:** Mutes all outgoing MIDI CCs from the panel (prevents CC leakage while keeping Direct Link active).
+- **Clear all:** Deletes all elements on the panel (irreversible).
+
+### 3.2 Knob, Toggle & Radio Menus
+
+- **Rename / Rename (ON):** Edits control labels.
+- **CC number (0–127) / MIDI channel (1–16, All):** Configures outgoing MIDI.
+- **MIDI bypass this control:** Mutes MIDI CC output for this element only.
+- **Color... / Size...:** Custom RGB palette, presets, or continuous resizing.
+- **Change to... (Knob / Toggle / Radio):** Converts control type in place, keeping Direct Link and parameters.
+- **Positions (2–6) / Vertical:** *(Radio only)* Step count and orientation (counted from bottom up).
+- **Selects scroll group:** *(Radio only)* Uses the radio to switch the panel's active scroll group (A–D).
+- **Momentary:** *(Toggle only)* Engaged only while mouse button is held.
+- **Bipolar:** *(Knob only)* Centers default at 64; ring fills from center.
+- **Init at max:** *(Knob only)* Centers default at 127.
+- **Learn / Re-learn / Clear plugin link:** Manages Direct Link to plugin parameters.
+- **Tab: [name]:** Moves element to another page.
+- **Duplicate / Delete:** Clones or removes the element.
+
+### 3.3 Meters (Needle VU & Stereo VU)
+
+- **Measure:** Selects **Gain reduction**, **Input level** (at panel position), or **Output level** (pre-fader chain end). Click the `GR` / `IN` / `OUT` label on the dial to cycle modes directly. *(Stereo VU supports IN and OUT only).*
+- **Reference (0 to −20 dBFS):** *(Level modes only)* Shifts 0 VU calibration to align with your headroom target.
+- **Source (Compressor 1–2, Gate 1–2):** Selects which dynamics processor to monitor.
+- **Linear / Exponential:** Selects scale law (exponential increases resolution near resting points).
+- **Show value / Peak hold:** Displays numeric readout and holds transient peaks.
+- **Stereo VU Specifics:** Dual stereo columns; clicking re-arms lit clip indicators; sizing scales height.
+
+### 3.4 Auxiliary Menus
+
+- **GR Bar:** Source selection, linear/exponential scale, vertical/horizontal orientation, peak hold.
+- **Title / Separator:** Rename, color palette/presets, tab assignment.
+- **Palette (Custom Colors):** Requires `System.lua` and **SWS Extension**. Automatically adapts label contrast based on background luminance.
+
+### 3.5 Tabs & Element Selection
+
+- **Tabs (2–4 pages):** Divides layout into pages. Controls remain active in the background. Disabling tabs re-flows all elements safely back to page 1. Scroll groups switch pages synchronously across grouped strips. Costs ~34 px in height.
+- **Selection & Clipboard:** In Edit mode, **Shift + click** selects multiple elements (blue ring). Dragging any selected element moves the batch across the grid (all-or-nothing collision check). Copying retains colors, names, values, and Direct Links.
+
+---
+
+## 4. Mouse & Keyboard Gestures
+
+### Normal Mode
+
+| Gesture | Action |
+| --- | --- |
+| Drag knob | Adjust value |
+| **Ctrl** + drag knob | Fine adjustment (≈ 3× slower) |
+| Double-click knob | Reset to default (0, 64 bipolar, or 127 max) |
+| Mouse wheel over knob | ±1 step / detent |
+| **Ctrl** + wheel | ±1 step / detent (overrides panel scrolling) |
+| **Ctrl + Shift** + wheel | ±5 steps / detents |
+| Click toggle | Flip state (or hold if Momentary) |
+| Click / drag radio | Select position |
+| Drag VU screw | Trim meter: ±20 dB in 0.5 dB steps (sensitivity for GR, offset for Level) |
+| Double-click VU screw | Reset trim to 0 |
+| Click Stereo VU | Re-arm clip indicator |
+| Click `GR` / `IN` / `OUT` on VU | Cycle measurement mode |
+| Wheel over panel / Drag background | Scroll panel |
+| **Shift** + wheel | Fast scroll |
+| Hover over linked control | Display real plugin parameter value pop-up |
+| Click / Right-click tab | Switch page / Edit tab settings |
+| Right-click | Context menu |
+
+### Edit Mode
+
+| Gesture | Action |
+| --- | --- |
+| Drag element | Move element (snaps to 1/8-cell grid; moves entire selection if selected) |
+| Click element / background | Clear selection |
+| **Shift + drag up / down** | **Resize element continuously (range 5–64 px)** |
+| **Shift + click** | Add / remove element from selection (blue ring) |
+| Right-click | Context menu |
+
+*Note:* Resizing elements does not change grid cell boundaries. Use **Fit grid to elements** in the background menu to re-space the grid around the largest control.
+
+---
+
+## 5. Parameter Linking (Direct Link)
+
+Direct Link provides bidirectional, sample-accurate communication between panel controls and plugin parameters, bypassing MIDI CC constraints.
+
+### How to Link
+
+1. Verify `StripTease System.lua` is running.
+2. Right-click a control and select **Learn plugin parameter...** (element flashes).
+3. Move the desired parameter on the target plugin GUI.
+4. The control stops flashing and confirms the link.
+
+- **Bidirectional Sync:** Tweaking either the panel or the plugin GUI updates both immediately.
+- **Stepped Parameters:** Linked knobs automatically adopt the plugin's native detents and step counts (for parameters up to ~500 steps).
+- **Hardware MIDI Controllers:** Panel controls are standard REAPER FX parameters. To bind a physical controller:
+  1. Enable **Input for control messages** in *Preferences > MIDI Devices*.
+  2. Move the panel control.
+  3. Run the REAPER action *FX: Set MIDI learn for last touched FX parameter* and move your hardware knob (enable *Soft takeover* if needed).
+
+```
+Hardware Controller → REAPER MIDI Learn → Panel Element → Direct Link → Target Plugin
+```
+
+---
+
+## 6. Metering — Gain Reduction & Levels
+
+Meters can display **Gain Reduction**, **Input Level**, or **Output Level**.
+
+### Gain Reduction Routes
+
+Gain reduction values are routed automatically in three ways:
+
+1. **Natively:** Plugins reporting `GainReduction_dB` (VST3 `IGainReductionInfo` or REAPER VST2 extension) are read automatically.
+2. **Through Parameter Readout & Learned Readouts:**
+   - Detects parameters named *gain reduction*, *gr readout*, *gr meter*, *attenuation*, *expansion*, or weak keywords (*redux*, *compression*).
+   - Validates graduation to prevent scale errors: unitless 0–100 percentage scales are rejected, while true decibel travel down to −90 dB (or 120 dB span) and `-inf dB` / `-∞ dB` readouts are scaled accurately.
+   - **Learned Readouts:** Observes parameter movement during playback. Once verified, learned mappings persist in cache per plugin type across sessions.
+
+#### Gate & Expander Classification and Limitations
+
+During playback, StripTease observes readout behavior against track dynamics:
+- **Compressor:** Reduction increases on loud signals (> −40 dB) and returns to rest when quiet.
+- **Gate / Expander:** Attenuation increases on quiet signals (< −60 dB) and opens up when loud. Confirmed gates route automatically to `Gate 1` / `Gate 2`.
+
+> [!WARNING]
+> **Gate Detection Limitations ("Better, but not perfect"):**
+> 1. **Dynamic Contrast Required:** Classification requires both loud passages (> −40 dB) and quiet passages (< −60 dB). On continuously dense, loud audio, total silence, or when the gate threshold is never crossed, the behavioral check cannot resolve and the candidate remains unconfirmed.
+> 2. **Native & Measured Fallback:** Plugins reporting natively via VST API or measured via audio contain no dynamics-type flag. StripTease falls back to name matching (`gate`, `expander`, `pro-g`). Multi-effects or channel strips without these words in their name will default to a `Compressor` slot.
+> 3. **Manual Override:** When auto-detection fails or misclassifies, run `StripTease Check.lua` to inspect parameters and explicitly set the plugin type (*Compressor or gate? y/n*).
+
+3. **Measured by the Panel (Audio-Rate or Fallback):**
+   When a plugin reports nothing and exposes no parameters, StripTease measures gain reduction by comparing audio across the plugin.
+
+#### Is a container still necessary?
+
+- **To get basic Gain Reduction:** **No.** In a normal flat chain, placing the panel **above** the compressor measures reduction via the **flat-chain fallback** using REAPER's track meter.
+- **To use the v1.2.1 Audio-Rate DSP Engine:** **Yes.** The high-precision JSFX DSP engine requires simultaneous access to both the compressor's input (channels 3/4) and output (channels 1/2) in the same audio block. This 4-channel tap requires a container.
+
+#### Measurement Routes Compared
+
+| Feature | Container Setup (*The Good Way*) | Flat Chain Fallback |
+| --- | --- | --- |
+| **Precision** | **Audio-rate** (64-sample sub-chunk RMS ratio: $g = \sqrt{\sum y^2 / \sum x^2}$) | ~30 Hz track-meter polling |
+| **Ballistics** | True attack and release response | Fast attacks/releases smoothed over |
+| **Latency / PDC** | Sample-accurate 8192-sample ring buffer alignment | Uncompensated |
+| **Validation** | 700 Hz dual-band split consistency check (`GrBandSplit`) | None |
+| **Mixer Independence** | Immune to track fader, pan, and mute | Inactive if fader at −∞ or muted |
+| **Wiring** | Right-click plugin → *Move FX to container*, panel immediately after | Panel simply placed above compressor |
+
+- **MCP Embedding with Containers:** Place the panel **immediately after the container** (StripTease expands the track to 4 channels automatically). This keeps the panel at the top level so its UI embeds in REAPER's MCP.
+- **Rest Gain Estimation (`GrRestGain`):** Reads makeup directly from plugin parameters, or extrapolates static gain on bus compressors via a 2D histogram linear regression.
+- **Dry/Wet Mix Inversion:** Un-blends parallel compression ($g_{wet} = \frac{g - (1 - m)}{m}$) so the needle reflects internal reduction.
+- **Mono Plugins:** Measured on left channel only.
+
+### Level Modes (Input & Output)
+
+- **Input Level:** Measures audio entering the panel at its specific slot in the chain.
+- **Output Level:** Pre-fader level at the end of the chain (derived from REAPER's track meter divided by fader volume).
+- **Scale & Calibration:** 23 dB range (−20 to +3 dB relative to reference; red zone at 0 to +3 dB). Trim screw offsets level readings (±20 dB). An orange dot indicates missing data (muted track or script stopped); true silence shows −inf without the dot.
+
+---
+
+## 7. Presets, Recipes & Mapping
+
+Direct Links normally break across tracks because REAPER assigns new GUIDs. StripTease overcomes this using **Recipes**:
+- A recipe saves the **original plugin name** and **parameter index**.
+- When a panel preset, track template, or FX chain loads on another track, `System.lua` scans the track and rebuilds all links automatically.
+- **One Recipe per Panel:** A panel holds links for one primary plugin. Status is shown in the background menu (`Preset links: N on <plugin>`).
+
+### Bundled FX Chains
+
+Twelve pre-mapped FX chains are included in `FXChains/`:
+
+| Chain | Target Plugin | Panel Height |
+| --- | --- | --- |
+| `StripTease SSL4000E` | bx_console SSL 4000 E (Plugin Alliance) | 600 px |
+| `StripTease SSL4000G` | bx_console SSL 4000 G (Plugin Alliance) | 600 px |
+| `StripTease SSL9000J` | bx_console SSL 9000 J (Plugin Alliance) | 600 px |
+| `StripTease BX Glue` | bx_glue (Plugin Alliance) | 400 px |
+| `StripTease TownHouse Bus` | bx_townhouse Buss Compressor (Plugin Alliance) | 300 px |
+| `StripTease Bx Opto` | bx_opto (Plugin Alliance) | 300 px |
+| `StripTease Vertigo VSC-2` | Vertigo VSC-2 (Plugin Alliance) | 300 px |
+| `StripTease Pro-C3` | Pro-C 3 (FabFilter) | 300 px |
+| `StripTease UAD 610A Pramp` | UADx 610-A Preamp & EQ (Universal Audio) | 200 px |
+| `StripTease UAD 610B Pramp` | UADx 610-B Preamp & EQ (Universal Audio) | 200 px |
+| `StripTease UAD DBX 160` | UADx dbx 160 Compressor (Universal Audio) | 200 px |
+| `StripTease AO The Bus` | TheBus (Analog Obsession) *(Container setup)* | 200 px |
+
+*Tip:* If you don't own these specific plugins, load the chain and use *Learn plugin parameter* to re-map the layout to your preferred processors.
+
+---
+
+## 8. Cross-Size Preset Synchronization
+
+The seven panel heights share the exact same parameter structure. `StripTease System.lua` checks REAPER's preset files every two seconds and synchronizes user presets across all seven sizes. A preset saved on a 200 px panel is instantly available on 050–600 px panels.
+
+---
+
+## 9. Key Limitations & Technical Notes
+
+- **MIDI CC vs. Direct Link:** MIDI CC travels downstream only; Direct Link is bidirectional, displays value pop-ups, and works anywhere in the chain.
+- **MIDI Bypass:** Use *Global MIDI bypass* or per-control bypass to prevent unwanted CC output from interfering with downstream synths or MIDI learn.
+- **Panel Capacity:** 100 elements, 1–4 grid columns, up to 4 tabbed pages.
+- **Multiple Panels:** Multiple panels can coexist on the same track with independent links and recipes.
+- **Destructive Actions:** *Clear all* and element deletion are irreversible.
+- **HiDPI:** Panels scale automatically with REAPER's display settings.
+- **Native Sliders Hidden:** The 100 underlying sliders remain fully automatable but are hidden from the UI.
+- **Tabs Height:** The tab bar consumes ~34 px of vertical height.
+- **Session Scroll:** Per-tab scroll offsets are maintained during the session; reopening a project resets scroll positions to the top.

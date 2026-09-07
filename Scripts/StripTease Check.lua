@@ -1,6 +1,6 @@
 -- ==========================================================================
 -- StripTease Check
--- Version: 1.2.0
+-- Version: 1.2.1
 -- Developer: Eric Avondo
 --
 -- Freeware - personal use. Resale or redistribution for profit is
@@ -48,16 +48,39 @@ local function GRof(tr, fx)
   return nil
 end
 
+-- Whole-word search: "gr" must not be recognised inside "Program", nor
+-- "reduction" in a label where it qualifies something other than the signal.
+local function WordIn(s, w)
+  local i = s:find(w, 1, true)
+  while i do
+    local a = i > 1 and s:sub(i - 1, i - 1) or " "
+    local b = s:sub(i + #w, i + #w)
+    if not a:match("%a") and not b:match("%a") then return true end
+    i = s:find(w, i + 1, true)
+  end
+  return false
+end
+
 -- Second route, the same one the service uses: a parameter whose name announces
 -- a reduction readout and whose travel is in dB. It exists because a JSFX cannot
 -- answer GainReduction_dB, whatever it hands REAPER's track meter through
 -- ext_gr_meter.
 local GR_PARAM_WORDS = { "gain reduction", "gr readout", "gr meter" }
+local GR_PARAM_WEAK  = { "gain redux", "gr out", "redux", "reduction", "compression", "gr",
+                         "attenuation", "expansion", "gate meter" }
 
 local function GRNamed(nm)
   local low = nm:lower()
   for _, w in ipairs(GR_PARAM_WORDS) do
     if low:find(w, 1, true) then return true end
+  end
+  return false
+end
+
+local function GRWeak(nm)
+  local low = nm:lower()
+  for _, w in ipairs(GR_PARAM_WEAK) do
+    if WordIn(low, w) then return true end
   end
   return false
 end
@@ -69,33 +92,47 @@ end
 local function GRLearned(tr, fx)
   local ok, id = reaper.TrackFX_GetNamedConfigParm(tr, fx, "fx_ident")
   if not ok or id == "" then return nil end
-  local v = reaper.GetExtState(NS, "grp." .. id)
+  local v = reaper.GetExtState("StripTeaseGRParam", "grp." .. id)
+  if not v or v == "" then v = reaper.GetExtState(NS, "grp." .. id) end
   if not v or v == "" then return nil end
-  local pm, mode = v:match("^(%d+)|(%a+)$")
+  local pm, mode, side = v:match("^(%d+)|(%a+)|(%a+)$")
+  if not pm then
+    pm, mode = v:match("^(%d+)|(%a+)$")
+  end
   if not pm then return nil end
+  if side ~= "comp" and side ~= "gate" then side = nil end
   local _, nm = reaper.TrackFX_GetParamName(tr, fx, tonumber(pm), "")
-  return tonumber(pm), nm or "", mode, true
+  return tonumber(pm), nm or "", mode, true, side
 end
 
 -- Must stay identical to DBNum in StripTease System: the report has to state
 -- what the service reads, not what a different parse would suggest. What is
 -- looked for is the number ATTACHED to its unit, not the first number around.
+local GRCEIL = 60
+
 local function DBNum(s, is_gr)
   if not s or s == "" then return nil end
 
   s = s:gsub("\226\136\146", "-"):gsub("\226\128\147", "-")
+       :gsub("\226\136\158", "inf")
        :gsub("\194\160", " ")
   s = s:gsub("(%d),(%d)", "%1.%2")
 
   if not s:find("%d") then
-    return (is_gr and s:lower():find("inf")) and 0 or nil
+    if is_gr then
+      local low = s:lower()
+      if low:find("inf", 1, true) then
+        return (low:find("%-%s*inf") and GRCEIL or 0), false
+      end
+    end
+    return nil
   end
 
   for num, unit in s:gmatch("([%-%+]?%d+%.?%d*)%s*(%a+)") do
-    if unit:lower():sub(1, 2) == "db" then return tonumber(num) end
+    if unit:lower():sub(1, 2) == "db" then return tonumber(num), true end
   end
 
-  if s:match("^%s*[%-%+]?%d+%.?%d*%s*$") then return tonumber(s) end
+  if s:match("^%s*[%-%+]?%d+%.?%d*%s*$") then return tonumber(s), false end
   return nil
 end
 
@@ -103,6 +140,7 @@ end
 -- displayed bounds, so that the report can show the scale on which it
 -- s'est prononce.
 local GRKMIN, GRKMAX, GRSPANMAX = 0.05, 20, 80
+local GRSPANMAX_DB = 120
 
 local function GRScale(tr, fx, pm)
   if not reaper.TrackFX_FormatParamValueNormalized then return "unknown" end
@@ -115,14 +153,16 @@ local function GRScale(tr, fx, pm)
   local okh, sh = reaper.TrackFX_FormatParamValueNormalized(tr, fx, pm, 0.5, "")
   if not ok0 or not ok1 then return "unknown" end
 
-  local a, b = DBNum(s0), DBNum(s1)
+  local a, u_a = DBNum(s0)
+  local b, u_b = DBNum(s1)
   if not a or not b then
     local both = ((s0 or "") .. " " .. (s1 or "")):lower()
     return both:find("inf") and "unknown" or "nodb", nil, nil, s0, s1
   end
 
   if math.abs(a) < 0.0005 and math.abs(b - 1) < 0.0005 then return "unknown" end
-  if math.abs(b - a) > GRSPANMAX then return "nodb", nil, nil, s0, s1 end
+  local spanmax = (u_a and u_b) and GRSPANMAX_DB or GRSPANMAX
+  if math.abs(b - a) > spanmax then return "nodb", nil, nil, s0, s1 end
 
   local k = (b - a) / (mx - mn)
   local c = a - k * mn
@@ -157,6 +197,12 @@ local function GRRead(tr, fx, pm, mode, k, c)
   return k and (k * v + (c or 0)) or v
 end
 
+local function DBFormatted(tr, fx, pm)
+  local ok, s = reaper.TrackFX_GetFormattedParamValue(tr, fx, pm, "")
+  if not ok or not s or s == "" then return false end
+  return s:lower():find("db", 1, true) ~= nil and s:find("%-?%d") ~= nil
+end
+
 -- The fate of a readout with a graduated travel, as the service decides it:
 -- read as is, read through a factor, read through its display, or refused.
 -- Renvoie mode, k, c, verdict -- mode nil quand l'unite reste indeterminable.
@@ -182,19 +228,22 @@ end
 -- discovered: that is what the service does on load, and the report must not
 -- show anything else.
 local function GRLearnedJudged(tr, fx)
-  local pm, nm, mode, learned = GRLearned(tr, fx)
+  local pm, nm, mode, learned, side = GRLearned(tr, fx)
   if not pm then return nil end
-  if mode ~= "raw" then return pm, nm, mode, learned end
+  if mode ~= "raw" then return pm, nm, mode, learned, nil, nil, nil, side end
 
   local m, k, c, verdict = GRJudge(tr, fx, pm)
-  if not m then return nil, nil, nil, nil, nil, nil, verdict end
-  return pm, nm, m, learned, k, c, verdict
+  if not m then return nil, nil, nil, nil, nil, nil, verdict, side end
+  return pm, nm, m, learned, k, c, verdict, side
 end
 
--- Renvoie pm, nom, mode, appris, k, c, verdict. Le verdict d'echelle voyage
+-- Renvoie pm, nom, mode, appris, k, c, verdict, side. Le verdict d'echelle voyage
 -- with the rest: this is what tells the reader why a perfectly named readout is
 -- not read, or why it is read through its display.
 local function GRParam(tr, fx)
+  local lpm, lnm, lmode, llearned, lk, lc, lverdict, lside = GRLearnedJudged(tr, fx)
+  if lpm then return lpm, lnm, lmode, llearned, lk, lc, lverdict, lside end
+
   local n = reaper.TrackFX_GetNumParams(tr, fx) or 0
   local pm = 0
   while pm < n do
@@ -203,18 +252,13 @@ local function GRParam(tr, fx)
       local _, mn, mx = reaper.TrackFX_GetParamEx(tr, fx, pm)
       if mn and mx and mx - mn > 1.5 then
         local mode, k, c, verdict = GRJudge(tr, fx, pm)
-        if mode then return pm, nm, mode, false, k, c, verdict end
-
-        -- Refused: the plugin falls back to being measured by the panel, unless
-        -- another parameter has been learned.
-        local lpm, lnm, lmode, llearned, lk, lc = GRLearnedJudged(tr, fx)
-        if lpm then return lpm, lnm, lmode, llearned, lk, lc end
-        return nil, nil, nil, nil, nil, nil, verdict
+        if mode then return pm, nm, mode, false, k, c, verdict, nil end
+        return nil, nil, nil, nil, nil, nil, verdict, nil
       end
     end
     pm = pm + 1
   end
-  return GRLearnedJudged(tr, fx)
+  return nil
 end
 
 local function IsGate(tr, fx)
@@ -283,11 +327,12 @@ local function scan(tr, k, label)
       end
     end
 
+    local side
     if db ~= nil then
       via = "native: GainReduction_dB"
     elseif not IsPanel(tr, fx) then
-      local pm, mode, learned, sk, sc
-      pm, pname, mode, learned, sk, sc = GRParam(tr, fx)
+      local pm, mode, learned, sk, sc, _
+      pm, pname, mode, learned, sk, sc, _, side = GRParam(tr, fx)
       if pm then
         db  = GRRead(tr, fx, pm, mode, sk, sc)
 
@@ -297,7 +342,11 @@ local function scan(tr, k, label)
         via = string.format("parameter p%d \"%s\", mode %s", pm, pname, mode)
         if sk then via = via .. string.format(", scale x%.3f", sk) end
         if sc and math.abs(sc) >= 0.05 then via = via .. string.format(" %+.1f dB", sc) end
-        if learned then via = via .. ", learned" end
+        if learned then
+          via = via .. string.format(", learned [%s]", side or "side unknown")
+        else
+          via = via .. string.format(" [%s]", side or "side unknown")
+        end
 
         local ok, disp = reaper.TrackFX_GetFormattedParamValue(tr, fx, pm, "")
         if ok and disp and disp ~= "" then
@@ -312,7 +361,10 @@ local function scan(tr, k, label)
     else
       total = total + 1
       local slot
-      if IsGate(tr, fx) then
+      -- Same rule as the service: the side the readout was seen taking wins,
+      -- and the plugin's name decides when nothing was observed.
+      local is_gate = side and side == "gate" or (not side and IsGate(tr, fx))
+      if is_gate then
         ngate = ngate + 1
         slot = ngate <= NGATE and string.format("-> Gate %d", ngate) or "(ignored)"
       else
@@ -413,67 +465,101 @@ say("Run during PLAYBACK -- stopped, everything reads zero and proves nothing.")
 say("TAKEN = read as the reduction.")
 say("")
 
+local two_readouts_count = 0
+
 for _, R in ipairs(candidates) do
   local np = reaper.TrackFX_GetNumParams(R.tr, R.fx) or 0
   say(string.format("--- k=%d  %s", R.k, R.nm))
   say(string.format("    %d parameters in total", np))
-  local hits, taken = 0, GRParam(R.tr, R.fx)
+  local hits = 0
+  local taken, tnm, tmode, tlearned, tk, tc, tverdict, tside = GRParam(R.tr, R.fx)
+  local n_readouts = 0
+
   for p = 0, math.min(np, 1024) - 1 do
-    local _, pn = reaper.TrackFX_GetParamName(R.tr, R.fx, p, "")
-    if LooksLikeMeter(pn) then
-      local _, pv = reaper.TrackFX_GetFormattedParamValue(R.tr, R.fx, p, "")
-      local _, mn, mx = reaper.TrackFX_GetParamEx(R.tr, R.fx, p)
-      local verdict = ""
+    local ok, pn = reaper.TrackFX_GetParamName(R.tr, R.fx, p, "")
+    if ok and pn ~= "" then
       if p == taken then
-        local _, k, _, vd = GRJudge(R.tr, R.fx, p)
-        verdict = "   <- TAKEN"
-        if vd == "nonlinear" then
-          verdict = verdict .. ", non-linear range: read from its display"
-        elseif vd == "unknown" then
-          verdict = verdict .. ", scale unestablished: read as dB unchecked"
-        elseif k then
-          verdict = verdict .. string.format(", scaled x%.3f to reach dB", k)
-        end
-
-      elseif GRNamed(pn) then
-        if mn and mx and mx - mn > 1.5 then
-
-          -- Perfect name, graduated travel, and yet refused: the unit is what
-          -- is missing. Saying so saves looking elsewhere -- and the plugin is
-          -- then measured by the panel, which is often the better outcome.
-          local _, _, _, vd = GRJudge(R.tr, R.fx, p)
-          local a, b = nil, nil
-          if reaper.TrackFX_FormatParamValueNormalized then
-            local _, s0 = reaper.TrackFX_FormatParamValueNormalized(R.tr, R.fx, p, 0, "")
-            local _, s1 = reaper.TrackFX_FormatParamValueNormalized(R.tr, R.fx, p, 1, "")
-            a, b = s0, s1
+        n_readouts = n_readouts + 1
+      else
+        local _, mn, mx = reaper.TrackFX_GetParamEx(R.tr, R.fx, p)
+        if GRNamed(pn) then
+          if (mn and mx and mx - mn > 1.5 and GRJudge(R.tr, R.fx, p) ~= nil)
+             or DBFormatted(R.tr, R.fx, p) then
+            n_readouts = n_readouts + 1
           end
-          verdict = string.format(
-            "   <- REFUSED: reads %s..%s, that is not decibels",
-            (a and a ~= "" and a) or string.format("%.2f", mn or 0),
-            (b and b ~= "" and b) or string.format("%.2f", mx or 0))
-          if vd == "unknown" then
-            verdict = "   <- REFUSED: range %.2f..%.2f is not a plausible dB scale"
-            verdict = string.format(verdict, mn or 0, mx or 0)
+        elseif GRWeak(pn) then
+          if (mn and mx and mx - mn > 1.5 and GRJudge(R.tr, R.fx, p) ~= nil)
+             or DBFormatted(R.tr, R.fx, p) then
+            n_readouts = n_readouts + 1
           end
-        else
-          verdict = string.format("   <- name ok, range %.2f..%.2f too narrow", mn or 0, mx or 0)
         end
       end
-      say(string.format("    p%-4d %-34s %-12s%s", p, pn:sub(1, 34), pv, verdict))
-      hits = hits + 1
+
+      if LooksLikeMeter(pn) or GRNamed(pn) or GRWeak(pn) or p == taken then
+        local _, pv = reaper.TrackFX_GetFormattedParamValue(R.tr, R.fx, p, "")
+        local _, mn, mx = reaper.TrackFX_GetParamEx(R.tr, R.fx, p)
+        local verdict = ""
+        if p == taken then
+          local _, k, _, vd = GRJudge(R.tr, R.fx, p)
+          local sidetag = tside and (" [" .. tside .. "]") or " [side unknown]"
+          verdict = "   <- TAKEN" .. sidetag
+          if vd == "nonlinear" then
+            verdict = verdict .. ", non-linear range: read from its display"
+          elseif vd == "unknown" then
+            verdict = verdict .. ", scale unestablished: read as dB unchecked"
+          elseif k then
+            verdict = verdict .. string.format(", scaled x%.3f to reach dB", k)
+          end
+
+        elseif GRNamed(pn) then
+          if mn and mx and mx - mn > 1.5 then
+
+            -- Perfect name, graduated travel, and yet refused: the unit is what
+            -- is missing. Saying so saves looking elsewhere -- and the plugin is
+            -- then measured by the panel, which is often the better outcome.
+            local _, _, _, vd = GRJudge(R.tr, R.fx, p)
+            local a, b = nil, nil
+            if reaper.TrackFX_FormatParamValueNormalized then
+              local _, s0 = reaper.TrackFX_FormatParamValueNormalized(R.tr, R.fx, p, 0, "")
+              local _, s1 = reaper.TrackFX_FormatParamValueNormalized(R.tr, R.fx, p, 1, "")
+              a, b = s0, s1
+            end
+            verdict = string.format(
+              "   <- REFUSED: reads %s..%s, that is not decibels",
+              (a and a ~= "" and a) or string.format("%.2f", mn or 0),
+              (b and b ~= "" and b) or string.format("%.2f", mx or 0))
+            if vd == "unknown" then
+              verdict = "   <- REFUSED: range %.2f..%.2f is not a plausible dB scale"
+              verdict = string.format(verdict, mn or 0, mx or 0)
+            end
+          else
+            verdict = string.format("   <- name ok, range %.2f..%.2f too narrow", mn or 0, mx or 0)
+          end
+        elseif GRWeak(pn) then
+          verdict = "   <- weak name -- needs playback confirmation"
+        end
+        say(string.format("    p%-4d %-34s %-12s%s", p, pn:sub(1, 34), pv, verdict))
+        hits = hits + 1
+      end
     end
   end
   if hits == 0 then
     say("    no parameter with a meter-like name.")
   end
-  if not taken then
+  if taken then
+    say(string.format("    -> retained: p%d \"%s\" [%s]", taken, tnm, tside or "side unknown"))
+  else
     say("    -> nothing StripTease can read here.")
     say("       If you just added a slider to a JSFX, RELOAD the plugin: an")
     say("       instance already in the project keeps its old parameter list.")
   end
+  if n_readouts >= 2 then
+    two_readouts_count = two_readouts_count + 1
+  end
   say("")
 end
+
+say(string.format("%d plugin(s) expose two separable readouts.", two_readouts_count))
 
 -- ==========================================================================
 -- Why the makeup is not read
@@ -537,17 +623,6 @@ local DYN_WORDS = {
   "fgred", "fggrey", "fgstress", "fg116", "fg401",
   "white2a", "black76",
 }
-
-local function WordIn(s, w)
-  local i = s:find(w, 1, true)
-  while i do
-    local a = i > 1 and s:sub(i - 1, i - 1) or " "
-    local b = s:sub(i + #w, i + #w)
-    if not a:match("%a") and not b:match("%a") then return true end
-    i = s:find(w, i + 1, true)
-  end
-  return false
-end
 
 -- Returns: recognised or not, the reason in plain words, and whether it is worth
 -- offering for manual setup. That third point does not follow from the first: a

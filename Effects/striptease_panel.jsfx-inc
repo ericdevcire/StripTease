@@ -1,7 +1,7 @@
 desc:StripTease Panel engine
 // ==========================================================================
 // StripTease Panel engine
-// Version: 1.2.0
+// Version: 1.2.1
 // Developer: Eric Avondo
 //
 // Freeware - personal use. Resale or redistribution for profit is
@@ -267,6 +267,7 @@ function sb_flag(i, bit) ( sb_EL[i * 8 + 7] & bit );
 function sb_togflag(i, bit)
 ( sb_EL[i * 8 + 7] = sb_flag(i, bit) ? sb_EL[i * 8 + 7] - bit
                                      : sb_EL[i * 8 + 7] + bit; );
+function sb_midi_byp(i) ( sb_flag(i, 4096) );
 
 function sb_val(i) ( slider(i + 1) );
 
@@ -1771,6 +1772,17 @@ function sb_vu_k(tau) ( 1 - exp(-sb_vu_dt / max(0.001, tau)) );
 function sb_vu_att() ( 0.05 );
 function sb_vu_rel() ( 0.11 );
 
+// A gate is not a compressor. Its reduction is a switch, not a slope: it is
+// full or nothing, and what has to be seen is the instant it lets go. Read
+// through the console constant, a 40 dB opening takes a third of a second to
+// come back to rest -- by which time the gate has already closed again on the
+// next word. The mass that suits a compressor is exactly what hides a gate.
+//
+// These stay filtered rather than instantaneous: the source publishes at 30 Hz
+// on the readout route, and a needle planted on every frame shivers in place.
+function sb_vu_gate_att() ( 0.02 );
+function sb_vu_gate_rel() ( 0.05 );
+
 // Age of a source, in seconds and not in frames.
 //
 // REAPER calls @gfx once per visible surface: counted in frames, the delay before
@@ -1796,7 +1808,7 @@ function sb_vu_age(i, stamp)
 );
 
 function sb_vu_tick(i)
-local(s, v, v2, stamp, live, m, lo, hi)
+local(s, v, v2, stamp, live, m, lo, hi, att, rel)
 (
   m  = sb_vu_mode(i);
   lo = sb_vu_lo(i);
@@ -1854,6 +1866,15 @@ local(s, v, v2, stamp, live, m, lo, hi)
     v2 = v;
   );
 
+  // Slots 5 and 6 are the gates -- the same numbering sb_gr_src_name reads. The
+  // level modes keep the console ballistics whatever the slot: there, the needle
+  // shows a level, and a level does have mass.
+  ( !m && sb_gr_link(i) >= 5 ) ? (
+    att = sb_vu_gate_att(); rel = sb_vu_gate_rel();
+  ) : (
+    att = sb_vu_att(); rel = sb_vu_rel();
+  );
+
   sb_GRA[i] >= sb_vu_idle() ? (
 
     sb_VU[i] = v; sb_VUP[i] = v;
@@ -1861,7 +1882,7 @@ local(s, v, v2, stamp, live, m, lo, hi)
     m ? ( sb_VUR[i] = -144; sb_VUR2[i] = -144; );
   ) : (
     sb_VU[i] += (v - sb_VU[i]) *
-                sb_vu_k( (v > sb_VU[i]) ? sb_vu_att() : sb_vu_rel() );
+                sb_vu_k( (v > sb_VU[i]) ? att : rel );
 
     v > sb_VUP[i] ? ( sb_VUP[i] = v; sb_VUPT[i] = 0; ) : (
       sb_VUPT[i] += sb_vu_dt;
@@ -1869,7 +1890,7 @@ local(s, v, v2, stamp, live, m, lo, hi)
     );
 
     sb_VU2[i] += (v2 - sb_VU2[i]) *
-                 sb_vu_k( (v2 > sb_VU2[i]) ? sb_vu_att() : sb_vu_rel() );
+                 sb_vu_k( (v2 > sb_VU2[i]) ? att : rel );
 
     v2 > sb_VUP2[i] ? ( sb_VUP2[i] = v2; sb_VUPT2[i] = 0; ) : (
       sb_VUPT2[i] += sb_vu_dt;
@@ -2898,6 +2919,7 @@ local(i, j, n, s, b)
   // larger panel would end up at a different spacing.
   gmem[sb_CBCFG + 7] = sb_gh;
   gmem[sb_CBCFG + 8] = sb_gw;
+  gmem[sb_CBCFG + 9] = sb_midi_bypass;
 
   i = 0;
   loop(sb_TABMAX,
@@ -2979,6 +3001,7 @@ local(i, j, n, s, b, was)
     // one: this keeps the local grid rather than tightening everything up.
     gmem[sb_CBCFG + 7] > 0 ? ( sb_gh = max(18, gmem[sb_CBCFG + 7]) );
     gmem[sb_CBCFG + 8] > 0 ? ( sb_gw = max(40, gmem[sb_CBCFG + 8]) );
+    sb_midi_bypass = gmem[sb_CBCFG + 9] ? 1 : 0;
 
     n = floor(gmem[sb_CBCFG + 4] + 0.5);
     sb_ntab = n >= 2 ? min(sb_TABMAX, n) : 0;
@@ -3229,6 +3252,7 @@ local(a, c, v, j, n)
     sb_mi_sep();
     sb_build_cc_menu(c[1]);
     sb_build_chan_menu(c[2]);
+    sb_mi_add(27, sb_midi_byp(i) ? "!MIDI bypass this control" : "MIDI bypass this control");
     sb_build_color_menu(c[6]);
     sb_build_size_menu(c[5]);
     sb_mi_sep();
@@ -3340,6 +3364,11 @@ local(a, c, v, j, n)
                      max(0, min(sb_radio_n(i) - 1, sb_group - 1))));
     );
   ) :
+  a == 27 ? (
+    sb_togflag(i, 4096);
+    (!sb_midi_bypass && !sb_midi_byp(i)) ? ( sb_LASTV[i] = -1; );
+    sb_cfg_dirty = 1;
+  ) :
   a ==  7 ? sb_togflag(i, 2) :
   a ==  8 ? sb_togflag(i, 4) :
   // 63.5 and not 64: the exact centre of the 0..127 range. The bipolar pointer is
@@ -3411,6 +3440,7 @@ local(a, v, i)
   sb_mi_add(3, sb_edit ? "!Edit mode" : "Edit mode");
   sb_mi_add(4, sb_show_names ? "!Show names" : "Show names");
   sb_mi_add(16, sb_show_ring ? "!Show knob rings" : "Show knob rings");
+  sb_mi_add(26, sb_midi_bypass ? "!Global MIDI bypass (bypass all MIDI)" : "Global MIDI bypass (bypass all MIDI)");
   i = sb_grp_pilot();
   sb_build_group_menu(sb_group, i >= 0 ? sb_radio_n(i) : 0);
   sb_build_color_menu(sb_bg_col);
@@ -3452,7 +3482,7 @@ local(a, v, i)
   sb_mi_sep();
 
   sb_mi_add(24, "Reset All Positions");
-  sb_mi_add(9,  "Resend all CCs");
+  sb_mi_add(9,  sb_midi_bypass ? "#Resend all CCs" : "Resend all CCs");
   sb_mi_add(10, "Clear all");
 
   a = sb_mi_run(mx, my);
@@ -3493,7 +3523,20 @@ local(a, v, i)
   a == 22 ? sb_lfx_forget() :
   a == 23 ? sb_lfx_capture() :
   a == 24 ? sb_reset_all() :
-  a ==  9 ? ( i = 0; loop(sb_MAX, sb_LASTV[i] = -1; i += 1;); ) :
+  a == 26 ? (
+    sb_midi_bypass = sb_midi_bypass ? 0 : 1;
+    !sb_midi_bypass ? ( i = 0; loop(sb_MAX, !sb_midi_byp(i) ? ( sb_LASTV[i] = -1; ); i += 1;); );
+    sb_cfg_dirty = 1;
+  ) :
+  a ==  9 ? (
+    !sb_midi_bypass ? (
+      i = 0;
+      loop(sb_MAX,
+        !sb_midi_byp(i) ? ( sb_LASTV[i] = -1; );
+        i += 1;
+      );
+    );
+  ) :
   a == 10 ? ( i = 0; loop(sb_MAX, sb_used(i) ? sb_delete(i); i += 1;); );
 
   sb_at_on = 0;
@@ -3870,19 +3913,35 @@ local(i)
   memset(sb_PDL, 0, sb_PDMAX * 2);
   sb_pdi = 0; sb_pdc = 0;
 
-  // Return of the makeup estimator towards a smaller gap, per computation step
-  // (sb_PDIV samples): thirty seconds of memory, as before.
-  //
-  // Except when the service has just seen a setting move on the compressor being
-  // measured (flag bit 3): what the estimator has learned is worth nothing any
-  // more, and it has to start over at once rather than over thirty seconds. The
-  // climb back up is already quick as soon as the chain stops reducing -- so that
-  // is the only direction to correct.
   sb_PDIV   = 64;
-  sb_mkrel  = 1 - exp(-(sb_PDIV / max(1, srate)) / 30);
-  sb_mkfast = 1 - exp(-(sb_PDIV / max(1, srate)) / 0.5);
-  sb_mkr    = sb_mkrel;
-  sb_mkt    = 30;
+
+  // StripTease GR DSP Core initialization
+  sb_RG0 = 24576;
+  sb_RG1 = 24800;
+  sb_RG_POP = 25024;
+  memset(sb_RG0, 0, 500);
+
+  sb_bs_coeff = 1 - exp(-2 * $pi * 700 / max(1, srate));
+  sb_bs_lpIn0 = 0; sb_bs_lpOut0 = 0; sb_bs_lpIn1 = 0; sb_bs_lpOut1 = 0;
+  sb_bs_loIn0 = 0; sb_bs_loOut0 = 0; sb_bs_hiIn0 = 0; sb_bs_hiOut0 = 0;
+  sb_bs_loIn1 = 0; sb_bs_loOut1 = 0; sb_bs_hiIn1 = 0; sb_bs_hiOut1 = 0;
+  sb_bs_trusted = 1; sb_bs_smoothed = 0; sb_bs_seeded = 0;
+  sb_bs_duty = 0; sb_bs_run = 1;
+
+  sb_sumInSq0 = 0; sb_sumOutSq0 = 0;
+  sb_sumInSq1 = 0; sb_sumOutSq1 = 0;
+  sb_subChunkCount = 0;
+
+  // Leaky energy window feeding the gain ratio, 20 ms, identical on the input and
+  // the output probe. sb_enorm brings the leaky sum back to a mean power: the
+  // window holds 64 / (1 - sb_ekeep) samples.
+  sb_ekeep = exp(-64 / max(1, srate * 0.02));
+  sb_enorm = (1 - sb_ekeep) / 64;
+  sb_eIn0 = 0; sb_eOut0 = 0; sb_eIn1 = 0; sb_eOut1 = 0;
+
+  sb_rg_totW0 = 0; sb_rg_levTotW0 = 0; sb_rg_obs0 = 0; sb_rg_extrap0 = 0; sb_rg_rest0 = 0;
+  sb_rg_totW1 = 0; sb_rg_levTotW1 = 0; sb_rg_obs1 = 0; sb_rg_extrap1 = 0; sb_rg_rest1 = 0;
+  sb_rg_div = 0; sb_rg_ok0 = 0; sb_rg_ok1 = 0;
 
   // Fall of the measurement envelopes, as an amplitude factor per sample, for
   // 480 dB/s -- REAPER's display fall, whose track meter serves as the output
@@ -3947,6 +4006,7 @@ local(i)
 
     sb_edit = 0; sb_show_names = 1; sb_show_ring = 1; sb_group = 1;
     sb_cols = 2;
+    sb_midi_bypass = 0;
 
     sb_ntab = 0; sb_tab = 0;
     i = 0; loop(sb_TABMAX, strcpy(sb_tab_name(i), ""); i += 1;);
@@ -3998,128 +4058,410 @@ local(i)
 // more than it would correct, and the floor then leaves it gently under-reading
 // rather than running away. At zero mix there is nothing left to recover anyway
 // -- the compressed signal does not leave the plugin.
-function sb_tap_ch(st, idb, odb, mk, use, mx)
-local(diff, gr, m, w)
+// ==========================================================================
+// StripTease GR DSP Core
+// Universal gain reduction measurement by sub-chunk energy ratio (64 samples).
+// Linear regression extrapolation of rest gain + P95 quantile fallback.
+// 700 Hz band-split spectral consistency trust validation.
+// ==========================================================================
+
+function sb_rg_reset(ch)
+local(base)
 (
-  diff = odb - idb;
-
-  // Quick rise, return over thirty seconds: at rest as on quiet passages, the
-  // chain is not compressing and the gap between the two probes is exactly what
-  // has to be taken out.
-  ( idb > -70 && odb > -70 ) ? (
-    diff > st[2] ? ( st[2] += (diff - st[2]) * 0.5; )
-                 : ( st[2] += (diff - st[2]) * sb_mkr; );
-  );
-
-  ( use && mx < 1 ) ? (
-    m = max(0.1, mx);
-    w = ( pow(10, diff / 20) - (1 - m) ) / m;
-    gr = mk - 20 * log10(max(w, 0.000001));
+  base = ch ? sb_RG1 : sb_RG0;
+  memset(base, 0, 192);
+  ch ? (
+    sb_rg_totW1 = 0; sb_rg_levTotW1 = 0; sb_rg_obs1 = 0; sb_rg_extrap1 = 0; sb_rg_rest1 = 0;
   ) : (
-    gr = ( use ? mk : st[2] ) - diff;
+    sb_rg_totW0 = 0; sb_rg_levTotW0 = 0; sb_rg_obs0 = 0; sb_rg_extrap0 = 0; sb_rg_rest0 = 0;
   );
-
-  gr = max(0, min(60, gr));
-  idb < -90 ? ( gr = 0 );
-  gr;
 );
 
-// The pins can be wired with no number left to feed -- six plugins already
-// reporting, for instance. The panel then keeps its envelopes for the Input level
-// mode, but has nothing to publish: sb_vlink is zero, and writing at that index
-// would overwrite the claim cell.
+function sb_rg_forget_half(ch)
+local(base, i)
+(
+  base = ch ? sb_RG1 : sb_RG0;
+  i = 0;
+  loop(192,
+    base[i] *= 0.5;
+    i += 1;
+  );
+  ch ? (
+    sb_rg_totW1 *= 0.5;
+    sb_rg_levTotW1 *= 0.5;
+  ) : (
+    sb_rg_totW0 *= 0.5;
+    sb_rg_levTotW0 *= 0.5;
+  );
+);
+
+function sb_rg_observe(ch, inLevelDb, gainDb, weight)
+local(base, gh, lg, lw, gi, li, i)
+(
+  ( weight > 0 && inLevelDb > -140 && gainDb > -140 ) ? (
+    base = ch ? sb_RG1 : sb_RG0;
+    gh = base;
+    lg = base + 160;
+    lw = base + 176;
+
+    gi = floor((gainDb - -40.0) / 0.5);
+    ( gi >= 0 && gi < 160 ) ? (
+      gh[gi] += weight;
+      ch ? ( sb_rg_totW1 += weight ) : ( sb_rg_totW0 += weight );
+    );
+
+    li = floor((inLevelDb - -72.0) / 4.5);
+    ( li >= 0 && li < 16 ) ? (
+      lg[li] += gainDb;
+      lw[li] += 1.0;
+      ch ? ( sb_rg_levTotW1 += 1.0 ) : ( sb_rg_levTotW0 += 1.0 );
+    );
+
+    ch ? (
+      sb_rg_obs1 += 1;
+      sb_rg_obs1 >= 64 ? (
+        sb_rg_obs1 = 0;
+        i = 0; loop(192, base[i] *= 0.9915; i += 1;);
+        sb_rg_totW1 *= 0.9915;
+        sb_rg_levTotW1 *= 0.9915;
+      );
+    ) : (
+      sb_rg_obs0 += 1;
+      sb_rg_obs0 >= 64 ? (
+        sb_rg_obs0 = 0;
+        i = 0; loop(192, base[i] *= 0.9915; i += 1;);
+        sb_rg_totW0 *= 0.9915;
+        sb_rg_levTotW0 *= 0.9915;
+      );
+    );
+  );
+);
+
+function sb_rg_estimate(ch)
+local(base, gh, lg, lw, totW, levTotW, minBinW, pop, i, w, x, y,
+      fullSpan, used, sw, sx, sy, sxx, sxy, denom, slope, intercept,
+      sse, r, dof, varSlope, slopeIsSig, target, acc, targetW, res)
+(
+  base = ch ? sb_RG1 : sb_RG0;
+  gh = base;
+  lg = base + 160;
+  lw = base + 176;
+  totW = ch ? sb_rg_totW1 : sb_rg_totW0;
+  levTotW = ch ? sb_rg_levTotW1 : sb_rg_levTotW0;
+
+  ch ? ( sb_rg_extrap1 = 0 ) : ( sb_rg_extrap0 = 0 );
+  res = 0;
+
+  totW <= 0 ? 0 : (
+    // 1. Level-based regression on lowest populated bins
+    minBinW = levTotW * 0.01;
+    pop = 0;
+    i = 0;
+    loop(16,
+      w = lw[i];
+      w > minBinW ? (
+        sb_RG_POP[pop * 3]     = -72.0 + (i + 0.5) * 4.5;
+        sb_RG_POP[pop * 3 + 1] = lg[i] / w;
+        sb_RG_POP[pop * 3 + 2] = w;
+        pop += 1;
+      );
+      i += 1;
+    );
+
+    fullSpan = pop > 0 ? (sb_RG_POP[(pop - 1) * 3] - sb_RG_POP[0]) : 0;
+    ( pop >= 4 && fullSpan >= 18.0 ) ? (
+      used = min(pop, 4);
+      sw = 0; sx = 0; sy = 0; sxx = 0; sxy = 0;
+      i = 0;
+      loop(used,
+        w = sb_RG_POP[i * 3 + 2];
+        x = sb_RG_POP[i * 3];
+        y = sb_RG_POP[i * 3 + 1];
+        sw += w; sx += w * x; sy += w * y; sxx += w * x * x; sxy += w * x * y;
+        i += 1;
+      );
+      denom = sw * sxx - sx * sx;
+      abs(denom) > 0.000000001 ? (
+        slope     = (sw * sxy - sx * sy) / denom;
+        intercept = (sy - slope * sx) / sw;
+
+        sse = 0;
+        i = 0;
+        loop(used,
+          r = sb_RG_POP[i * 3 + 1] - (intercept + slope * sb_RG_POP[i * 3]);
+          sse += sb_RG_POP[i * 3 + 2] * r * r;
+          i += 1;
+        );
+        dof = used - 2;
+        varSlope = dof > 0 ? (sse / dof) * sw / denom : 0;
+        slopeIsSig = (varSlope <= 0) || abs(slope) > 2.0 * sqrt(max(0, varSlope));
+
+        ( slope >= -1.0 && slope <= 0.05 ) ? (
+          ( slope > -0.02 || !slopeIsSig ) ? (
+            ch ? ( sb_rg_rest1 = sy / sw ) : ( sb_rg_rest0 = sy / sw );
+          ) : (
+            target = sb_RG_POP[0] - 12.0;
+            ch ? (
+              sb_rg_rest1 = intercept + slope * target;
+              sb_rg_extrap1 = 1;
+            ) : (
+              sb_rg_rest0 = intercept + slope * target;
+              sb_rg_extrap0 = 1;
+            );
+          );
+          res = 1;
+        );
+      );
+    );
+
+    !res ? (
+      // 2. Fallback: P95 quantile on gain distribution.
+      //
+      // EEL2's loop() runs a fixed count and has no break: the guard has to be
+      // in the body. Walking the index out of the array instead would read
+      // below the histogram and re-fire the test on every remaining pass.
+      targetW = totW * 0.05;
+      acc = 0;
+      i = 159;
+      loop(160,
+        !res ? (
+          acc += gh[i];
+          acc >= targetW ? (
+            ch ? ( sb_rg_rest1 = -40.0 + (i + 0.5) * 0.5 )
+               : ( sb_rg_rest0 = -40.0 + (i + 0.5) * 0.5 );
+            res = 1;
+          );
+          i -= 1;
+        );
+      );
+    );
+
+    res;
+  );
+);
+
+function sb_calc_gr(g, restDb, mix)
+local(m, restLin, restWet, gWet, measuredDb, gr)
+(
+  g <= 0 ? 0 : (
+    mix < 1.0 ? (
+      m = max(0.1, mix);
+      gWet    = (g - (1.0 - m)) / m;
+      restLin = pow(10, restDb / 20);
+      restWet = (restLin - (1.0 - m)) / m;
+
+      // Either both sides come back to the wet convention, or neither does.
+      // Inverting g alone -- and letting a negative wet gain fall on the 1e-6
+      // floor -- reads as 120 dB of reduction and pegs the needle.
+      ( gWet > 0 && restWet > 0 ) ? (
+        g = gWet;
+        restDb = 20 * log10(restWet);
+      );
+    );
+    measuredDb = 20 * log10(max(g, 0.000001));
+    gr = restDb - measuredDb;
+    max(0, min(60, gr));
+  );
+);
+
+function sb_bs_diff(loIn, hiIn, loOut, hiOut)
+local(tot, lowDb, highDb)
+(
+  ( loIn <= 0 || hiIn <= 0 || loOut <= 0 || hiOut <= 0 ) ? 0 : (
+    tot = loIn + hiIn;
+    ( loIn < tot * 0.01 || hiIn < tot * 0.01 ) ? 0 : (
+      lowDb  = 10 * log10(max(0.000000000001, loOut / loIn));
+      highDb = 10 * log10(max(0.000000000001, hiOut / hiIn));
+      abs(lowDb - highDb);
+    );
+  );
+);
+
 function sb_tap_tick()
-local(vb, f, mk, use, mx, gr)
+local(vb, f, mk, haveMakeup, mx, meanIn0, meanIn1, g0, g1, inDb0, inDb1,
+      ok0, ok1, restUse0, restUse1, gr0, gr1, gr, diff0, diff1, worstDiff)
 (
   sb_vlink ? (
-  vb  = sb_grv_base();
-  f   = gmem[vb + 6];
-  mk  = gmem[vb + 3];
-  use = f & 1;
+    vb  = sb_grv_base();
+    f   = gmem[vb + 6];
+    mk  = gmem[vb + 3];
+    haveMakeup = f & 1;
+    mx  = ( f & 16 ) ? max(0, min(1, gmem[vb + 4])) : 1;
+    sb_pdc = max(0, min(sb_PDMAX - 1, gmem[vb + 7]));
 
-  // Bit 4: the service has read a parallel mix from the plugin, filed in cell 4
-  // -- unused on this route, where both probes are right here.
-  mx  = ( f & 16 ) ? max(0, min(1, gmem[vb + 4])) : 1;
+    // Bit 3: settings moved -> forget half
+    ( f & 8 ) ? (
+      sb_rg_forget_half(0);
+      sb_rg_forget_half(1);
+    );
 
-  sb_pdc = max(0, min(sb_PDMAX - 1, gmem[vb + 7]));
+    // Bit 5: the service says the source is at rest -- bypassed, taken offline,
+    // or a chain nothing is flowing through. There is no gain to read out of a
+    // plugin that has stopped working, and reading one anyway is what put a
+    // permanent reduction on the needle: with a makeup declared, the two probes
+    // agree the moment the plugin is bypassed, and the whole static gain lands
+    // in the gap as if it had been taken out of the signal.
+    //
+    // The energy in hand goes with it. Keeping it would make the first block
+    // back measure an output against an input from before the interruption.
+    ( f & 32 ) ? (
+      sb_eIn0 = 0; sb_eOut0 = 0; sb_eIn1 = 0; sb_eOut1 = 0;
+      sb_sumInSq0 = 0; sb_sumOutSq0 = 0;
+      sb_sumInSq1 = 0; sb_sumOutSq1 = 0;
+      gr = 0;
+    ) : (
 
-  // Bit 3: a setting on the compressor has just moved. The static gain that was
-  // learned may be the previous one, so it is redone quickly.
-  sb_mkr = ( f & 8 ) ? sb_mkfast : sb_mkrel;
+    // The chunk's energy goes into a leaky sum, the same one on both sides, so
+    // the ratio is taken over about twenty milliseconds instead of the 1.3 ms a
+    // bare chunk covers. Below one period of the material the two sums no longer
+    // measure the same thing, and a couple of samples of residual misalignment
+    // -- a plugin that under-reports its latency, a lookahead REAPER has already
+    // compensated -- then read as several dB of reduction on a gain that has not
+    // moved. Twenty milliseconds spans 50 Hz, and sits well inside the needle's
+    // own ballistics: nothing is lost at the display.
+    sb_eIn0  = sb_eIn0  * sb_ekeep + sb_sumInSq0;
+    sb_eOut0 = sb_eOut0 * sb_ekeep + sb_sumOutSq0;
+    sb_eIn1  = sb_eIn1  * sb_ekeep + sb_sumInSq1;
+    sb_eOut1 = sb_eOut1 * sb_ekeep + sb_sumOutSq1;
 
-  gr = sb_tap_ch(sb_VCH,
-                 sb_id0 > 0.0000001 ? 20 * log10(sb_id0) : -144,
-                 sb_eo0 > 0.0000001 ? 20 * log10(sb_eo0) : -144, mk, use, mx);
+    // Mean power over the window the leaky sum actually holds. It cancels in the
+    // ratio, and only serves to place the observation on the level axis.
+    meanIn0 = sb_eIn0 * sb_enorm;
+    meanIn1 = sb_eIn1 * sb_enorm;
 
-  // Bit 1: plugin instantiated in mono. REAPER only presents channel 1 to it, the
-  // other crosses the container untouched -- looking at it would show nothing but
-  // the makeup. Otherwise both channels count, and the larger of the two
-  // reductions is kept.
-  ( f & 2 ) ? 0 : (
-    gr = max(gr,
-             sb_tap_ch(sb_VCH + 4,
-                       sb_id1 > 0.0000001 ? 20 * log10(sb_id1) : -144,
-                       sb_eo1 > 0.0000001 ? 20 * log10(sb_eo1) : -144, mk, use, mx));
-  );
+    g0 = meanIn0 > 0.00000001 ? sqrt(sb_eOut0 / sb_eIn0) : -1;
+    g1 = meanIn1 > 0.00000001 ? sqrt(sb_eOut1 / sb_eIn1) : -1;
 
-  gmem[sb_gr_base() + 1 + sb_vlink] = gr;
+    inDb0 = meanIn0 > 0.00000001 ? 10 * log10(meanIn0) : -144;
+    inDb1 = meanIn1 > 0.00000001 ? 10 * log10(meanIn1) : -144;
 
-  // Heartbeat read by the service: without it, a panel that stops measuring would
-  // leave its last value in place, and the track stamp -- which the service keeps
-  // moving forward on its own side -- would make it pass for alive.
-  sb_vhb += 1;
-  sb_vhb > 10000000 ? ( sb_vhb = 1 );
-  gmem[vb + 2] = sb_vhb;
+    // One observation per chunk, weighted by that chunk's own energy: the
+    // histogram keeps learning at chunk rate, on a gain that is no longer noise.
+    g0 > 0 ? sb_rg_observe(0, inDb0, 20 * log10(g0), sb_sumInSq0);
+    g1 > 0 ? sb_rg_observe(1, inDb1, 20 * log10(g1), sb_sumInSq1);
+
+    sb_sumInSq0 = 0; sb_sumOutSq0 = 0;
+    sb_sumInSq1 = 0; sb_sumOutSq1 = 0;
+
+    // Band split duty cycle
+    sb_bs_duty += 1;
+    sb_bs_duty >= 128 ? ( sb_bs_duty = 0 );
+    sb_bs_run = ( sb_bs_duty < 16 );
+
+    // Read on the first tick after the burst: at duty 15 the burst is still
+    // arming the next chunk, which would land in the accumulators just after
+    // they are cleared and stay there until the following window.
+    sb_bs_duty == 16 ? (
+      diff0 = sb_bs_diff(sb_bs_loIn0, sb_bs_hiIn0, sb_bs_loOut0, sb_bs_hiOut0);
+      diff1 = sb_bs_diff(sb_bs_loIn1, sb_bs_hiIn1, sb_bs_loOut1, sb_bs_hiOut1);
+      worstDiff = max(diff0, diff1);
+      sb_bs_smoothed = sb_bs_seeded ? (sb_bs_smoothed + 0.35 * (worstDiff - sb_bs_smoothed)) : worstDiff;
+      sb_bs_seeded = 1;
+      sb_bs_trusted = sb_bs_trusted ? (sb_bs_smoothed <= 4.0) : (sb_bs_smoothed <= 3.0);
+
+      sb_bs_loIn0 = 0; sb_bs_loOut0 = 0; sb_bs_hiIn0 = 0; sb_bs_hiOut0 = 0;
+      sb_bs_loIn1 = 0; sb_bs_loOut1 = 0; sb_bs_hiIn1 = 0; sb_bs_hiOut1 = 0;
+    );
+
+    // The estimate does not have to be redone on every chunk: it reads a
+    // histogram that moves slowly, and the needle it feeds is drawn at frame
+    // rate. Once every eight chunks is about ten milliseconds at 48 k -- far
+    // ahead of the display, and an eighth of the arithmetic.
+    sb_rg_div += 1;
+    sb_rg_div >= 8 ? (
+      sb_rg_div = 0;
+      sb_rg_ok0 = sb_rg_estimate(0);
+      sb_rg_ok1 = sb_rg_estimate(1);
+    );
+    ok0 = sb_rg_ok0; ok1 = sb_rg_ok1;
+
+    // Bit 0: the service certifies that the only static gain between the two
+    // probes is the compressor's makeup, and hands over the value the plugin
+    // itself declares. That is the exact figure; the estimator can only be a
+    // worse guess at the same thing, so it does not get to overrule it. It goes
+    // on learning underneath and takes over the moment the makeup stops being
+    // readable.
+    haveMakeup ? (
+      restUse0 = mk;
+      restUse1 = mk;
+    ) : (
+      restUse0 = ok0 ? sb_rg_rest0 : 0;
+      restUse1 = ok1 ? sb_rg_rest1 : 0;
+    );
+
+    gr0 = sb_calc_gr(g0, restUse0, mx);
+    gr1 = sb_calc_gr(g1, restUse1, mx);
+
+    !sb_bs_trusted ? ( gr0 = 0; gr1 = 0; );
+
+    ( f & 2 ) ? (
+      gr = gr0;
+    ) : (
+      gr = max(gr0, gr1);
+    );
+
+    );  // end of the ( f & 32 ) alternative: at rest above, measuring here
+
+    gmem[sb_gr_base() + 1 + sb_vlink] = gr;
+
+    sb_vhb += 1;
+    sb_vhb > 10000000 ? ( sb_vhb = 1 );
+    gmem[vb + 2] = sb_vhb;
   );
 );
 
 function sb_sample(l, r, pl, pr)
-local(pk, j)
+local(pk, j, del_inL, del_inR, hiIn0, hiOut0, hiIn1, hiOut1)
 (
-  // Input level mode. With the probe through the pins, the panel sits at the end
-  // of the container and it is on 3/4 that the strip's input arrives; without it,
-  // the panel is at the head of the chain and its direct input does the job. The
-  // mode therefore keeps the same meaning in both arrangements.
   pk = sb_tap ? max(abs(pl), abs(pr)) : max(abs(l), abs(r));
   sb_env = pk > sb_env ? pk : sb_env * sb_rel;
 
   sb_tap ? (
-
-    // The same detector on all four sides -- instant rise, 30 ms fall. That is
-    // the condition for the gap between the envelopes to be the compressor's gain
-    // and nothing else: with different detectors, what stays in the gap is the
-    // crest factor, which every compressor reshapes in its own way. The channels
-    // stay separate, a mono plugin only processes one of them.
-    sb_ei0 = max(abs(pl), sb_ei0 * sb_rel);
-    sb_ei1 = max(abs(pr), sb_ei1 * sb_rel);
-    sb_eo0 = max(abs(l),  sb_eo0 * sb_rel);
-    sb_eo1 = max(abs(r),  sb_eo1 * sb_rel);
-
-    sb_PDL[sb_pdi]              = sb_ei0;
-    sb_PDL[sb_PDMAX + sb_pdi]   = sb_ei1;
+    // Store input audio samples in PDC delay line
+    sb_PDL[sb_pdi]              = pl;
+    sb_PDL[sb_PDMAX + sb_pdi]   = pr;
 
     j = sb_pdi - sb_pdc;
     j < 0 ? ( j += sb_PDMAX );
-    sb_id0 = sb_PDL[j];
-    sb_id1 = sb_PDL[sb_PDMAX + j];
+    del_inL = sb_PDL[j];
+    del_inR = sb_PDL[sb_PDMAX + j];
 
     sb_pdi += 1;
     sb_pdi >= sb_PDMAX ? ( sb_pdi = 0 );
 
-    // One computation step every sb_PDIV samples, that is more than 700 times a
-    // second at 48 k. The envelopes themselves are kept on every sample: nothing
-    // is lost of a peak between two steps, and the logarithms are only taken once
-    // in sixty-four.
-    sb_tcnt += 1;
-    sb_tcnt >= sb_PDIV ? ( sb_tcnt = 0; sb_tap_tick(); );
-  ) : (
+    // Accumulate squared sums for sub-chunk energy ratio
+    sb_sumInSq0  += del_inL * del_inL;
+    sb_sumOutSq0 += l * l;
+    sb_sumInSq1  += del_inR * del_inR;
+    sb_sumOutSq1 += r * r;
 
-    // Fallback route, with no probe: the counterpart is the track meter and no
-    // longer the compressor's output. The same law as it -- instant rise, fall at
-    // a constant rate in dB -- because a plain peak hold from one publication to
-    // the next would keep the summit of the whole window while the output probe,
-    // sampled at one precise instant, has already come back down: the gap between
-    // the two would read as reduction.
+    // 700 Hz Band Split filter during active duty burst
+    sb_bs_run ? (
+      sb_bs_lpIn0  += sb_bs_coeff * (del_inL - sb_bs_lpIn0);
+      sb_bs_lpOut0 += sb_bs_coeff * (l       - sb_bs_lpOut0);
+      hiIn0  = del_inL - sb_bs_lpIn0;
+      hiOut0 = l       - sb_bs_lpOut0;
+      sb_bs_loIn0  += sb_bs_lpIn0 * sb_bs_lpIn0;
+      sb_bs_loOut0 += sb_bs_lpOut0 * sb_bs_lpOut0;
+      sb_bs_hiIn0  += hiIn0 * hiIn0;
+      sb_bs_hiOut0 += hiOut0 * hiOut0;
+
+      sb_bs_lpIn1  += sb_bs_coeff * (del_inR - sb_bs_lpIn1);
+      sb_bs_lpOut1 += sb_bs_coeff * (r       - sb_bs_lpOut1);
+      hiIn1  = del_inR - sb_bs_lpIn1;
+      hiOut1 = r       - sb_bs_lpOut1;
+      sb_bs_loIn1  += sb_bs_lpIn1 * sb_bs_lpIn1;
+      sb_bs_loOut1 += sb_bs_lpOut1 * sb_bs_lpOut1;
+      sb_bs_hiIn1  += hiIn1 * hiIn1;
+      sb_bs_hiOut1 += hiOut1 * hiOut1;
+    );
+
+    sb_subChunkCount += 1;
+    sb_subChunkCount >= 64 ? (
+      sb_subChunkCount = 0;
+      sb_tap_tick();
+    );
+  ) : (
     sb_envh0 = max(abs(l), sb_envh0 * sb_vdec);
     sb_envh1 = max(abs(r), sb_envh1 * sb_vdec);
   );
@@ -4134,7 +4476,7 @@ local(pk, j)
 // and the track meter, published into sb_TL with the fader taken out, gives the
 // chain's output. What the compressor takes away is the difference between the
 // two, once the static gain everything else adds has been deducted: that is the
-// makeup estimator, taken from the StripTease GR JSFX.
+// GrRestGain estimator.
 //
 // The service announces in sb_GRV which source number this route feeds. There is
 // never more than one: it only elects the route when a single silent compressor
@@ -4201,10 +4543,8 @@ local(e, v)
 // duration it is no longer the smoothing that limits but the rate at which the
 // output probe arrives, and nothing here can do anything about it.
 //
-// The static gain rises fast and falls back slowly: at rest as on quiet passages,
-// the chain is not compressing and the gap between the two probes is exactly what
-// has to be taken out -- the compressor's makeup, and the pan's attenuation on
-// this channel. Thirty seconds of memory, as in StripTease GR.
+// The static gain is estimated by GrRestGain (level regression extrapolation
+// and P95 quantile fallback).
 //
 // mk / use: when the span is tight enough for the only static gain between the
 // two probes to be the compressor's makeup, the service reads it from the plugin
@@ -4213,8 +4553,8 @@ local(e, v)
 // never stops reducing and therefore never shows it its rest. The estimator keeps
 // running underneath: if the makeup stops being readable along the way, it takes
 // over immediately.
-function sb_virt_ch(st, idb, odb, dt, mk, use)
-local(diff, gr)
+function sb_virt_ch(st, idb, odb, dt, mk, use, ch)
+local(diff, gr, ok, restUse)
 (
   st[0] = max(idb, st[0] - dt * 150);
   st[1] = max(odb, st[1] - dt * 150);
@@ -4222,14 +4562,20 @@ local(diff, gr)
   diff = st[1] - st[0];
 
   ( st[0] > -70 && st[1] > -70 ) ? (
-    diff > st[2] ? (
-      st[2] += (diff - st[2]) * 0.5;
-    ) : (
-      st[2] += (diff - st[2]) * (1 - exp(-dt / sb_mkt));
-    );
+    sb_rg_observe(ch, st[0], diff, 1.0);
   );
 
-  gr = max(0, min(60, ( use ? mk : st[2] ) - diff));
+  ok = sb_rg_estimate(ch);
+
+  // The declared makeup is the exact static gain whenever the service certifies
+  // the span; the estimator does not overrule it, it only stands in for it.
+  use ? (
+    restUse = mk;
+  ) : (
+    restUse = ok ? (ch ? sb_rg_rest1 : sb_rg_rest0) : 0;
+  );
+
+  gr = max(0, min(60, restUse - diff));
   st[0] < -90 ? ( gr = 0 );
   gr;
 );
@@ -4250,13 +4596,25 @@ local(st, gr, now, dt, vb, f, mk, use)
     mk  = gmem[vb + 3];
     use = f & 1;
 
-    // Bit 3: a setting on the compressor has just moved, so the estimator starts
-    // over in half a second instead of thirty.
-    sb_mkt = ( f & 8 ) ? 0.5 : 30;
+    // Bit 3: settings moved -> forget half
+    ( f & 8 ) ? (
+      sb_rg_forget_half(0);
+      sb_rg_forget_half(1);
+    );
+
+    // Bit 5: source at rest. The envelopes go home with the needle -- they fall
+    // at 150 dB/s, and left standing they would keep feeding a gap for the best
+    // part of a second after the plugin stopped working.
+    ( f & 32 ) ? (
+      sb_envh0 = 0; sb_envh1 = 0;
+      sb_VCH[0] = -144; sb_VCH[1] = -144;
+      sb_VCH[4] = -144; sb_VCH[5] = -144;
+      gr = 0;
+    ) : (
 
     gr = sb_virt_ch(sb_VCH,
                     sb_envh0 > 0.0000001 ? 20 * log10(sb_envh0) : -144,
-                    gmem[vb + 4], dt, mk, use);
+                    gmem[vb + 4], dt, mk, use, 0);
 
     // Bit 1: plugin instantiated in mono. REAPER only presents channel 1 to it,
     // the other crosses the chain untouched -- looking at it would show nothing
@@ -4266,8 +4624,20 @@ local(st, gr, now, dt, vb, f, mk, use)
       gr = max(gr,
                sb_virt_ch(sb_VCH + 4,
                           sb_envh1 > 0.0000001 ? 20 * log10(sb_envh1) : -144,
-                          gmem[vb + 5], dt, mk, use));
+                          gmem[vb + 5], dt, mk, use, 1));
     );
+
+    // Bit 6: other plugins in the span report their own reduction, and the
+    // service has put the sum of it in cell 7 -- free on this route. The probe
+    // measures everything between the panel and the end of the chain: without
+    // this, a compressor added behind the gate would have its reduction counted
+    // as the gate's. Gains in series add up in dB, so the subtraction is exact
+    // in principle; what it is worth in practice is what the other plugin's
+    // readout is worth, sampled once per frame against a measurement made at the
+    // audio rate. A stale value only ever costs a few tenths, floored at zero.
+    ( f & 64 ) ? ( gr = max(0, gr - gmem[vb + 7]) );
+
+    );  // end of the ( f & 32 ) alternative: at rest above, measuring here
 
     gmem[sb_gr_base() + 1 + sb_vlink] = gr;
 
@@ -4320,7 +4690,9 @@ local(i, v, ch, meas)
 
   sb_meas_on = meas;
   !meas ? ( sb_env = 0; sb_envh0 = 0; sb_envh1 = 0;
-            sb_ei0 = 0; sb_ei1 = 0; sb_eo0 = 0; sb_eo1 = 0; );
+            sb_sumInSq0 = 0; sb_sumOutSq0 = 0; sb_sumInSq1 = 0; sb_sumOutSq1 = 0;
+            sb_eIn0 = 0; sb_eOut0 = 0; sb_eIn1 = 0; sb_eOut1 = 0;
+            sb_subChunkCount = 0; );
 
   // With no probe, the measurement is paced by the track meter's stamp. With one,
   // it happens in sb_sample and there is nothing to trigger here.
@@ -4357,8 +4729,10 @@ local(i, v, ch, meas)
       // linked plugin's GUI moved -- the CC's target then stays aligned with what
       // the control displays.
       v != sb_LASTV[i] ? (
-        ch = sb_EL[i * 8 + 2];
-        midisend(0, 0xB0 + max(0, ch), sb_EL[i * 8 + 1], v);
+        (!sb_midi_bypass && !sb_midi_byp(i)) ? (
+          ch = sb_EL[i * 8 + 2];
+          midisend(0, 0xB0 + max(0, ch), sb_EL[i * 8 + 1], v);
+        );
       );
       sb_LASTV[i] = v;
     );
@@ -4369,7 +4743,7 @@ local(i, v, ch, meas)
 function sb_serialize()
 local(i, n)
 (
-  sb_ser_ver = 17;
+  sb_ser_ver = 18;
   file_var(0, sb_ser_ver);
 
   // Number of elements present in the stream. Every tier is frozen on a literal:
@@ -4475,6 +4849,13 @@ local(i, n)
   ) : (
     sb_fit_grid();
   );
+
+  sb_ser_ver >= 18 ? (
+    file_var(0, sb_midi_bypass);
+  ) : (
+    sb_midi_bypass = 0;
+  );
+  sb_midi_bypass = sb_midi_bypass ? 1 : 0;
 
   sb_ser_ver < 4 ? ( sb_migrate_px = 1 );
 

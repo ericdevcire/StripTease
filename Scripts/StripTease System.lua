@@ -1,6 +1,6 @@
 -- ==========================================================================
 -- StripTease System
--- Version: 1.2.0
+-- Version: 1.2.1
 -- Developer: Eric Avondo
 --
 -- Freeware - personal use. Resale or redistribution for profit is
@@ -145,24 +145,36 @@ end
 -- one is the only choice that never picks the wrong field.
 --
 -- With no unit anywhere, only the bare number is accepted: a label that mixes
--- digits with something else cannot be guessed. And for a reduction readout,
--- "-inf" means zero reduction, not zero for the value read.
+-- digits with something else cannot be guessed.
+--
+-- A reduction readout displaying negative infinity is fully closed, reading at
+-- the meter's ceiling; plain or positive infinity remains at rest (zero). A
+-- second return value reports whether the number carried an attached dB unit.
+local GRCEIL = 60
+
 local function DBNum(s, is_gr)
   if not s or s == "" then return nil end
 
   s = s:gsub("\226\136\146", "-"):gsub("\226\128\147", "-")
+       :gsub("\226\136\158", "inf")
        :gsub("\194\160", " ")
   s = s:gsub("(%d),(%d)", "%1.%2")
 
   if not s:find("%d") then
-    return (is_gr and s:lower():find("inf")) and 0 or nil
+    if is_gr then
+      local low = s:lower()
+      if low:find("inf", 1, true) then
+        return (low:find("%-%s*inf") and GRCEIL or 0), false
+      end
+    end
+    return nil
   end
 
   for num, unit in s:gmatch("([%-%+]?%d+%.?%d*)%s*(%a+)") do
-    if unit:lower():sub(1, 2) == "db" then return tonumber(num) end
+    if unit:lower():sub(1, 2) == "db" then return tonumber(num), true end
   end
 
-  if s:match("^%s*[%-%+]?%d+%.?%d*%s*$") then return tonumber(s) end
+  if s:match("^%s*[%-%+]?%d+%.?%d*%s*$") then return tonumber(s), false end
   return nil
 end
 
@@ -186,32 +198,102 @@ local function GRValue(tr, fx, e)
   return e.k and (e.k * v + (e.c or 0)) or v
 end
 
+-- A plugin that is no longer processing anything keeps its meter where it was.
+-- Bypass it, take it offline, stop the transport: nothing calls it any more, its
+-- reduction readout stays frozen on the last value it computed, and the service
+-- would go on republishing that value for ever. A gate is where this shows worst
+-- -- it sits at its full range rather than at zero, so the panel displays a
+-- reduction on a plugin that is doing nothing at all.
+--
+-- Neither of the two states is guessed: REAPER is asked.
+--
+-- Bypassing the container counts too: everything inside it stops, the plugin
+-- goes on answering that it is enabled, and the whole strip freezes at once --
+-- which is precisely the gesture someone makes to check what the strip is doing.
+-- Only the parent chain is cached; the bypass state itself is read every frame,
+-- since that is the thing being watched. Container structure only moves on a
+-- chain edit, and that rebuilds the cache along with the source list.
+local parentcache = {}
+
+local function Parent(tr, fx)
+  local m = parentcache[tr]
+  if not m then m = {}; parentcache[tr] = m end
+
+  local v = m[fx]
+  if v == nil then
+    local ok, pp = reaper.TrackFX_GetNamedConfigParm(tr, fx, "parent_container")
+    v = (ok and pp ~= "" and tonumber(pp)) or false
+    m[fx] = v
+  end
+  return v or nil
+end
+
+local function FXActive(tr, fx)
+  local guard = 0
+  while fx and guard < 8 do
+    if reaper.TrackFX_GetEnabled(tr, fx) == false then return false end
+    if reaper.TrackFX_GetOffline and reaper.TrackFX_GetOffline(tr, fx) then return false end
+    fx = Parent(tr, fx)
+    guard = guard + 1
+  end
+  return true
+end
+
+-- Nothing is flowing through the chain: the transport is stopped or paused, and
+-- the track is not armed. Being armed is the exception that matters -- a chain
+-- fed by live monitoring works with the transport stopped, and its gate is doing
+-- real work that must keep being shown.
+local function ChainIdle(tr)
+  if reaper.GetPlayState() % 2 == 1 then return false end
+  if reaper.GetMediaTrackInfo_Value(tr, "I_RECARM") == 1 then return false end
+  return true
+end
+
+-- What a plugin declares about its own reduction, whichever of the two routes
+-- told us how to read it. Absolute value and ceiling: depending on the plugin, a
+-- reduction readout counts downwards (-6) or upwards (6), and the StripTease VU
+-- works in positive reduction on a bounded scale.
+local function GRRead(tr, fx, gp)
+  local e = gp and gp[fx]
+  if e then
+    return math.min(GRCEIL, math.abs(GRValue(tr, fx, e)))
+  end
+  local ok, v = reaper.TrackFX_GetNamedConfigParm(tr, fx, "GainReduction_dB")
+  return math.min(GRCEIL, math.abs(ok and tonumber(v) or 0))
+end
+
 -- Only the cells we have a source for are written. The others are left to
 -- whoever feeds them -- the StripTease GR JSFX, or the panel through the virtual
 -- channel -- for a compressor that does not report its gain reduction: writing 0
 -- into them on every frame would erase that measurement. A `false` cell is
 -- exactly one of those: it takes up a number without the service writing to it.
 -- Cells freed when a source disappears are zeroed once, by ClaimGR.
-local function Publish(tr, b, list, n, off, kbase, gp)
+--
+-- The one thing that does get written into a `false` cell is a zero, and only
+-- when the source behind it has demonstrably stopped working: with the transport
+-- stopped the panel is not being called at all, so it cannot bring its own needle
+-- home, and the service is the only thing still running.
+local function Publish(tr, b, list, n, off, kbase, gp, idle, vrest)
   for j = 1, n do
     local key = kbase + j
     if list[j] then
-      local db
-      local e = gp and gp[list[j]]
-      if e then
+      if idle or not FXActive(tr, list[j]) then
 
-        -- Absolute value and ceiling: depending on the plugin, a reduction
-        -- readout counts downwards (-6) or upwards (6), and the StripTease VU
-        -- works in positive reduction on a bounded scale.
-        db = math.min(60, math.abs(GRValue(tr, list[j], e)))
+        -- At rest: straight to zero, without the two-frame hold. The hold is
+        -- there to catch a peak between two reads; it has nothing to hold on to
+        -- here, and would only add a frame of lag to a needle coming home.
+        prev[key] = 0
+        reaper.gmem_write(b + off + j, 0)
       else
-        local ok, v = reaper.TrackFX_GetNamedConfigParm(tr, list[j], "GainReduction_dB")
-        db = math.abs(ok and tonumber(v) or 0)
+        local db = GRRead(tr, list[j], gp)
+        local pv = prev[key] or 0
+        prev[key] = db
+        reaper.gmem_write(b + off + j, db > pv and db or pv)
       end
-      local pv = prev[key] or 0
-      prev[key] = db
-      reaper.gmem_write(b + off + j, db > pv and db or pv)
     else
+      if list[j] == false and (idle or vrest) then
+        reaper.gmem_write(b + off + j, 0)
+      end
       prev[key] = nil
     end
   end
@@ -389,7 +471,8 @@ local GR_PARAM_WORDS = { "gain reduction", "gr readout", "gr meter" }
 -- most often apply to a readout normalised 0..1 that the old dB-travel rule
 -- rejected. They open a lead, not a right: the candidate still has to behave
 -- like a reduction readout (see VConfirm).
-local GR_PARAM_WEAK = { "gain redux", "gr out", "redux", "reduction", "compression", "gr" }
+local GR_PARAM_WEAK = { "gain redux", "gr out", "redux", "reduction", "compression", "gr",
+                        "attenuation", "expansion", "gate meter" }
 
 -- Whole-word search: "gr" must not be recognised inside "Program", nor
 -- "reduction" in a label where it qualifies something other than the signal.
@@ -444,6 +527,7 @@ end
 -- non-linear front-panel graduation gives itself away during playback instead
 -- (see VConfirm), where the raw value and what it displays are seen together.
 local GRKMIN, GRKMAX, GRSPANMAX = 0.05, 20, 80
+local GRSPANMAX_DB = 120
 
 local function GRScale(tr, fx, pm)
   if not reaper.TrackFX_FormatParamValueNormalized then return "unknown" end
@@ -458,7 +542,8 @@ local function GRScale(tr, fx, pm)
 
   -- An end at infinity is a correct reading, but no straight line passes through
   -- infinity: this abstains rather than refuses.
-  local a, b = DBNum(s0), DBNum(s1)
+  local a, u_a = DBNum(s0)
+  local b, u_b = DBNum(s1)
   if not a or not b then
     local both = ((s0 or "") .. " " .. (s1 or "")):lower()
     return both:find("inf") and "unknown" or "nodb"
@@ -467,7 +552,8 @@ local function GRScale(tr, fx, pm)
   -- The plugin does not format: REAPER returned the normalised value itself.
   if math.abs(a) < 0.0005 and math.abs(b - 1) < 0.0005 then return "unknown" end
 
-  if math.abs(b - a) > GRSPANMAX then return "nodb" end
+  local spanmax = (u_a and u_b) and GRSPANMAX_DB or GRSPANMAX
+  if math.abs(b - a) > spanmax then return "nodb" end
 
   local k = (b - a) / (mx - mn)
   local c = a - k * mn
@@ -534,17 +620,30 @@ end
 -- carving that silence in stone would condemn it for good.
 local function GRCacheSet(key, e)
   grpcache[key] = e
-  reaper.SetExtState(NS, "grp." .. key, e.pm .. "|" .. e.mode, true)
+
+  -- The side travels with the entry, in memory as on disk. A readout found by
+  -- its name alone has never been watched at work and states no side: that stays
+  -- nil rather than becoming "comp", so the plugin's name still gets to decide
+  -- (see ScanTrack). Only what VConfirm established is written down.
+  local side = e.side
+  local payload = e.pm .. "|" .. e.mode .. (side and ("|" .. side) or "")
+  reaper.SetExtState(NS, "grp." .. key, payload, true)
+  reaper.SetExtState("StripTeaseGRParam", "grp." .. key, payload, true)
 end
 
 local function GRCacheGet(tr, fx, key)
   local e = grpcache[key]
   if e == nil then
-    local v = reaper.GetExtState(NS, "grp." .. key)
+    local v = reaper.GetExtState("StripTeaseGRParam", "grp." .. key)
+    if not v or v == "" then v = reaper.GetExtState(NS, "grp." .. key) end
     if not v or v == "" then return nil end
-    local pm, mode = v:match("^(%d+)|(%a+)$")
+    local pm, mode, side = v:match("^(%d+)|(%a+)|(%a+)$")
+    if not pm then
+      pm, mode = v:match("^(%d+)|(%a+)$")
+    end
     if not pm then return nil end
-    e = { pm = tonumber(pm), mode = mode }
+    if side ~= "comp" and side ~= "gate" then side = nil end
+    e = { pm = tonumber(pm), mode = mode, side = side }
     grpcache[key] = e
   end
 
@@ -569,6 +668,7 @@ local function GRCacheGet(tr, fx, key)
     if not named then
       grpcache[key] = nil
       reaper.DeleteExtState(NS, "grp." .. key, true)
+      reaper.DeleteExtState("StripTeaseGRParam", "grp." .. key, true)
       return nil
     end
 
@@ -655,11 +755,26 @@ end
 -- reduction readout keeps them apart, a control does not.
 local pend = {}
 
-local LOUD, QUIET, NSAMP, VSPREAD = -40, -60, 15, 0.5
+local LOUD, QUIET, NSAMP, VSPREAD, VDEADLINE = -40, -60, 15, 0.5, 6000
 
 local function VConfirm(tr, fx, key, c)
   local lvl = TrackLevelDB(tr)
   if not lvl then return end
+
+  -- Candidate observation deadline: if downstream processing prevents the track
+  -- level from ever visiting both loud and quiet deciles, abandon the candidate
+  -- for the session rather than waiting indefinitely. Only playback counts: a
+  -- stopped transport reads -144 dB, which fills the quiet basket without the
+  -- loud one ever moving, and a project simply left open would run the clock out
+  -- on a candidate that was never given anything to hear.
+  local playing = (reaper.GetPlayState() % 2) == 1
+  c.frames = (c.frames or 0) + (playing and 1 or 0)
+  if c.frames > VDEADLINE then
+    grpcache[key] = false
+    pend[key] = nil
+    force_rescan = true
+    return
+  end
 
   -- The scale, checked live. The static probe reads both ends of the travel;
   -- here the raw value and what the plugin displays for it are seen at the same
@@ -685,8 +800,9 @@ local function VConfirm(tr, fx, key, c)
   end
 
   if c.nl >= NSAMP and c.nq >= NSAMP then
-    if c.loud - c.quiet > VSPREAD then
-      local e = { pm = c.pm, mode = c.mode, k = c.k, c = c.c }
+    if math.abs(c.loud - c.quiet) > VSPREAD then
+      local side = c.loud > c.quiet and "comp" or "gate"
+      local e = { pm = c.pm, mode = c.mode, k = c.k, c = c.c, side = side }
 
       -- Two points far enough apart are enough to draw the line. It wins over
       -- the static probe: it was taken on the plugin at work, and it is the only
@@ -786,7 +902,7 @@ local function GRParam(tr, fx)
   if weak and key then
     pend[key] = { tr = tr, fx = fx, pm = weak.pm, mode = weak.mode,
                   k = weak.k, c = weak.c,
-                  loud = 0, quiet = 0, nl = 0, nq = 0 }
+                  loud = 0, quiet = 0, nl = 0, nq = 0, frames = 0 }
   elseif key then
     grpcache[key] = false
   end
@@ -1400,20 +1516,40 @@ local function TapFind(tr, fxlist)
       if panel then
         local fin = dedans and #it - 1 or #it
         local seul, n = nil, 0
+        local dormant, ndormant, nlive = nil, 0, 0
         local ok = true
 
         for i = 1, fin do
           local fx = it[i]
 
-          -- What a plugin reports on its own crosses the span of the probe and
-          -- would add there to the silent one's reduction. This refuses rather
-          -- than publish the sum of the two.
-          if IsGRSource(tr, fx) or GRParam(tr, fx) then
-            ok = false
-            break
+          -- Bypassed or offline: transparent, therefore outside the span. It
+          -- neither contaminates the measurement nor counts as a second
+          -- candidate -- bypassing the compressor of a strip to hear what it is
+          -- doing must not take the gate's needle away with it.
+          local act = FXActive(tr, fx)
+
+          if IsDyn(tr, fx) then
+            ndormant = ndormant + 1; dormant = fx
           end
-          if IsDyn(tr, fx) then n = n + 1; seul = fx end
+
+          if act then
+            nlive = nlive + 1
+
+            -- What a plugin reports on its own crosses the span of the probe and
+            -- would add there to the silent one's reduction. This refuses rather
+            -- than publish the sum of the two.
+            if IsGRSource(tr, fx) or GRParam(tr, fx) then
+              ok = false
+              break
+            end
+            if IsDyn(tr, fx) then n = n + 1; seul = fx end
+          end
         end
+
+        -- The only dynamics in the container, and it is asleep: it keeps its
+        -- number all the same. Losing it would renumber the VUs of the strip on
+        -- a bypass, and the needle is held at zero by bit 5 anyway.
+        if n == 0 and ndormant == 1 then n, seul = 1, dormant end
 
         if ok and n == 1 then
           return { c = c, panel = panel, fx = seul, gate = IsGate(tr, seul),
@@ -1421,8 +1557,9 @@ local function TapFind(tr, fxlist)
 
                    -- Tight span: nothing but the compressor between the two
                    -- probes, so the only static gain separating them is its
-                   -- makeup, and reading it from the plugin is enough.
-                   tight = (fin == 1) }
+                   -- makeup, and reading it from the plugin is enough. Counted
+                   -- on what is awake: a bypassed neighbour adds no gain.
+                   tight = (nlive <= 1) }
         end
       end
     end
@@ -1519,34 +1656,47 @@ local function ScanTrack(tr, k, fxlist, panelfx)
   local last, dit = 0, {}
 
   for pos, fx in ipairs(fxlist) do
-    if Plain(fx) then last = pos end
+
+    -- Bypassed or offline, a plugin is transparent: it is not in the span of the
+    -- virtual probe and must not weigh on the choice of what that probe measures,
+    -- nor on where the chain is taken to end. Its slot, on the other hand, it
+    -- keeps -- the numbering of the VUs of a project cannot move because someone
+    -- bypassed an FX.
+    local act = FXActive(tr, fx)
+
+    if Plain(fx) and act then last = pos end
     if not IsPanel(tr, fx) then
       local native = IsGRSource(tr, fx)
       local e = (not native) and GRParam(tr, fx) or nil
       if native or e then
         if e then gp = gp or {}; gp[fx] = e end
-        if IsGate(tr, fx) then
+        -- What the readout was seen doing during playback settles it; failing
+        -- that -- a native source, or a readout found by its name alone and
+        -- never watched at work -- the plugin's name decides, as before.
+        local side = e and e.side
+        local is_gate = side and side == "gate" or (not side and IsGate(tr, fx))
+        if is_gate then
           if ng < NGATE then ng = ng + 1; gate[ng] = fx end
         elseif nc < NMAX then
           nc = nc + 1; comp[nc] = fx
         end
 
-        -- What a plugin reports on its own takes precedence over any estimate,
-        -- and rules it out besides: its reduction crosses the span of the virtual
-        -- measurement, which would count it together with the silent one's. The
-        -- list exists to refuse that confusion further down.
-        dit[#dit + 1] = pos
-      elseif Plain(fx) and IsDyn(tr, fx) then
+        -- Its reduction crosses the span of the virtual measurement, which
+        -- would count it together with the silent one's. The list exists to
+        -- take it back out further down.
+        if act then dit[#dit + 1] = { pos = pos, fx = fx } end
+      elseif Plain(fx) and IsDyn(tr, fx) and act then
         muet[#muet + 1] = { fx = fx, pos = pos, gate = IsGate(tr, fx) }
       end
     end
   end
 
   -- The virtual probe compares the panel's input to the chain's output: it
-  -- therefore only measures a compressor that sits between the two, and it cannot
-  -- untangle two successive reductions. One candidate downstream of the panel,
-  -- then, and no source already reporting on its own: better a VU that announces
-  -- it has no source than a VU displaying the sum of two compressors.
+  -- therefore only measures a plugin that sits between the two, and it cannot
+  -- untangle two reductions it has no other word about. One silent candidate
+  -- downstream of the panel, then -- better a VU announcing it has no source
+  -- than a VU displaying the sum of two compressors. Anything else in the span
+  -- that reports its own reduction is subtracted rather than refused: see vsub.
   local vmask, ppos, tight = 0, nil, false
 
   -- The probe through the pins first: where it exists it makes the fallback route
@@ -1582,9 +1732,21 @@ local function ScanTrack(tr, k, fxlist, panelfx)
     end
   end
 
+  -- Reductions the plugins downstream of the panel report on their own. The
+  -- virtual probe frames everything between the panel and the end of the chain:
+  -- a compressor added there piles its reduction onto the silent one's, and the
+  -- audio alone cannot separate the two. Giving the measurement up left the
+  -- needle dead the moment a compressor joined the gate; what those plugins
+  -- declare is subtracted from the total instead. Their figure is coarse against
+  -- an audio-rate measurement -- one value per frame, from a detector that is
+  -- not ours -- but it is the only thing known about them.
+  local vsub = nil
   if ppos then
-    for _, pos in ipairs(dit) do
-      if pos > ppos then ppos = nil; break end
+    for _, d in ipairs(dit) do
+      if d.pos > ppos then
+        vsub = vsub or {}
+        vsub[#vsub + 1] = d.fx
+      end
     end
   end
 
@@ -1631,7 +1793,8 @@ local function ScanTrack(tr, k, fxlist, panelfx)
     -- not depend on a subtlety of the table.
     sources[#sources + 1] = { tr = tr, k = k, fx = comp, gate = gate, gp = gp,
                               nc = nc, ng = ng, vmask = vmask,
-                              vfx = vfx, vmk = vmk, vtap = tap ~= nil }
+                              vfx = vfx, vmk = vmk, vtap = tap ~= nil,
+                              vsub = (vmask > 0 and not tap) and vsub or nil }
   end
 end
 
@@ -1989,8 +2152,8 @@ end
 local function PParse(s)
   local gen, list, cur = {}, {}, nil
   local nb = nil
-  for line in (s .. "\n"):gmatch("([^\n]*)\n") do
-    line = line:gsub("\r$", "")
+  for raw_line in (s .. "\n"):gmatch("([^\n]*)\n") do
+    local line = raw_line:gsub("\r$", "")
     local sec = line:match("^%[(.-)%]%s*$")
     if sec then
       cur = nil
@@ -2318,6 +2481,7 @@ local function Run()
     if force_rescan or pc ~= pstate then
       pstate = pc
       force_rescan = false
+      parentcache = {}
       Rescan()
     end
     rescan = RESCAN_EVERY
@@ -2348,8 +2512,16 @@ local function Run()
     if Valid(s.tr) then
       local b = GR + s.k * STRIDE
 
-      Publish(s.tr, b, s.fx,   NMAX,  1, s.k * 16,     s.gp)
-      Publish(s.tr, b, s.gate, NGATE, 5, s.k * 16 + 8, s.gp)
+      -- The panel measures through the virtual channel or the pins; it is only
+      -- called while audio flows. When it stops, the panel cannot bring its own
+      -- cell home and the service does it for it -- and tells it, through bit 5,
+      -- so the two do not write different values into the same cell the moment
+      -- the chain starts running again on a bypassed plugin.
+      local idle  = ChainIdle(s.tr)
+      local vrest = idle or (s.vfx and not FXActive(s.tr, s.vfx)) or false
+
+      Publish(s.tr, b, s.fx,   NMAX,  1, s.k * 16,     s.gp, idle, vrest)
+      Publish(s.tr, b, s.gate, NGATE, 5, s.k * 16 + 8, s.gp, idle, vrest)
 
       reaper.gmem_write(b + 1, s.nc + s.ng * 16)
       reaper.gmem_write(b, tick)
@@ -2363,6 +2535,14 @@ local function Run()
         -- must then fall back on the estimator without waiting for a rescan.
         local f = 0
         if s.vfx and MonoFX(s.tr, s.vfx) then f = f + 2 end
+
+        -- Bit 5: the source is at rest -- bypassed, offline, or a chain nothing
+        -- is flowing through. The panel holds its needle at zero and drops the
+        -- energy it had in hand, rather than reading a gain out of a plugin that
+        -- has stopped answering. Without it, a bypassed compressor with a read
+        -- makeup shows exactly its makeup as a permanent reduction: the probes
+        -- agree, and the whole static gain lands in the gap.
+        if vrest then f = f + 32 end
 
         -- The pan sits after the container: between two probes taken inside it,
         -- it does not enter the gap and therefore has nothing to say about
@@ -2410,6 +2590,23 @@ local function Run()
             end
           end
         end
+
+        -- Bit 6: something else in the span reports its own reduction, and the
+        -- sum of what those plugins declare is in cell 7 -- free on this route,
+        -- where the latency of the wired probe has nothing to say. The panel
+        -- takes it off its total. What is asleep is left out: it reduces
+        -- nothing, and its readout is frozen on the last value it computed.
+        if s.vsub and not s.vtap then
+          local sub = 0
+          for _, fx in ipairs(s.vsub) do
+            if not vrest and FXActive(s.tr, fx) then
+              sub = sub + GRRead(s.tr, fx, s.gp)
+            end
+          end
+          reaper.gmem_write(vb + 7, sub)
+          f = f + 64
+        end
+
         reaper.gmem_write(vb + 6, f)
 
         -- Published before the TL stamp, further down: it is its change that

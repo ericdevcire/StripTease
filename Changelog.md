@@ -2,6 +2,41 @@
 
 All notable changes to StripTease, newest version first. Version numbers match the entries ReaPack shows.
 
+## 1.2.1 — 2026-09-07
+
+**Gate detection and classification on parameter readouts.**
+The parameter-readout route now supports gates and expanders:
+- **Behavioural confirmation classifies side:** The measurement that confirms a readout during playback now checks whether reduction occurs on quiet passages (gates) or loud passages (compressors), routing to `Gate 1` / `Gate 2` meters without relying on plugin naming alone.
+- **Negative infinity parsing:** Readouts displaying `-inf dB` or `-∞ dB` at full close now deflect the meter to full reduction instead of reading as 0 dB.
+- **Wide travel support for explicit dB graduations:** Readouts graduated down to −90 dB (or up to 120 dB span) are judged linear when explicit dB units are present, while unitless 0..100 percentage scales continue to be rejected.
+- **Extended weak candidate vocabulary:** Added `attenuation`, `expansion`, and `gate meter` to weak parameter detection.
+- **Persistent dynamics side in cache:** Learned gates survive REAPER restarts, with full backward compatibility for existing two-field entries.
+- **Bounded observation:** Pending confirmation candidates now carry an active deadline so a candidate never remains stuck in observation.
+- **`StripTease Check.lua` alignment:** Reports dynamics side (`[comp]` or `[gate]`), weak parameter status, and counts plugins exposing two separable readouts.
+
+**Rebuilt Gain Reduction DSP measurement engine.**
+The audio-rate Gain Reduction measurement system has been rebuilt from the ground up with a high-precision DSP core natively in JSFX:
+- **Sub-chunk RMS Energy Ratio (64 samples):** Audio-rate measurements are calculated as $g = \sqrt{\frac{\sum y^2}{\sum x^2}}$ over 64-sample sub-chunks. This calculation is phase-independent, exact across arbitrary complex waveforms, and resilient to saturation and harmonic distortion.
+- **`GrRestGain` regression estimator:** Replaces the previous 30-second asymmetric peak tracker with a 2D level/gain histogram and linear regression over the lowest populated input levels. On bus compressors that are in continuous reduction, it extrapolates the rest gain below threshold, completely solving the "sagging needle" limitation. When insufficient data is available, it falls back to a P95 quantile on the gain distribution, and forgets half its history upon parameter movements.
+- **700 Hz Band-Split Consistency Validation (`GrBandSplit`):** A dual-band single-pole split filter checks for spectral gain consistency across the compressor. If the low and high bands disagree by more than 4 dB (with a 3 dB hysteresis recovery), the measurement is flagged as untrustworthy (preventing false gain reduction indications on EQs or multiband processors).
+- **Dry/Wet Parallel Mix Inversion:** Exact mathematical inversion of the dry/wet blend ($g_{wet} = \frac{g - (1 - m)}{m}$) recovered directly from the plugin's mix parameter.
+- **PDC Latency Alignment:** The compressor's output is framed sample-accurately against delayed input samples through an expanded 8192-sample ring buffer.
+
+**`StripTease.jsfx` simplified to a passive GR monitor (RobKor code purged).**
+`StripTease.jsfx` has been rewritten into a lightweight shared-memory monitor:
+- It listens directly to the values published by `StripTease System.lua` in `gmem`.
+- It can mirror the reduction to REAPER's native track meter (`ext_gr_meter`).
+
+**ExtState interoperability.**
+Added bidirectional synchronization between `StripTeaseGR` and `StripTeaseGRParam` ExtState namespaces for parameter learning cache.
+
+**MIDI bypass options (Global and per-control).**
+Added context menu options to prevent unwanted MIDI CC routing:
+- **Global MIDI bypass (bypass all MIDI):** Right-click on an empty panel area to mute all outgoing MIDI CC messages from the panel's controls. The *Resend all CCs* menu item is greyed out while global bypass is active. Direct Link parameter automation remains fully functional.
+- **MIDI bypass this control:** Right-click on an individual control (knob, toggle, radio) to mute its MIDI CC output independently.
+- **State persistence:** Both settings are saved with the project (serialization tier 18), preserved across layout and element clipboard operations, and non-bypassed controls automatically resync their values upon unbypassing.
+
+
 ## 1.2.0 — 2026-08-30
 
 **A panel holds 100 elements instead of 50.** The local memory map, the per-track stride of the shared memory and both clipboards were re-laid around the new count. Existing panels are unaffected: the serialized stream keeps a frozen tier per version, so a panel saved by an earlier build is read back with its 50 elements, its labels, its tabs, its frozen grid and its parameter links exactly where they were, and the space above simply comes up empty. Nothing has to be rebuilt, and no layout moves on the way in.

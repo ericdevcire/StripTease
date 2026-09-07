@@ -1,20 +1,19 @@
 desc:StripTease GR
 options:gmem=StripTease
 // ==========================================================================
-// StripTease
-// Version: 1.2.0
+// StripTease GR Monitor
+// Version: 1.2.1
 // Developer: Eric Avondo
 //
 // Freeware - personal use. Resale or redistribution for profit is
 // prohibited. See LICENSE.txt.
 //
-// Gain-reduction estimation adapted from the StripLink Aggregator by RobKor
-// (Wormhole Labs), reimplemented here - with thanks.
+// Reads and monitors gain reduction published by StripTease System
+// directly from shared memory (gmem).
 // ==========================================================================
-slider1:0<0,1,1{In   -  above the compressor,Out  -  below the compressor}>Measurement point
-slider2:1<1,4,1>Compressor (number on this track)
-slider3:1<0,1,1{Manual,Auto}>Makeup
-slider4:0<0,24,0.1>Manual makeup (dB)
+slider1:1<1,4,1>Compressor (number on this track)
+slider2:1<0,1,1{Off,On}>Mirror to REAPER track meter
+slider3:0<0,60,0.1>Gain reduction (dB)
 
 in_pin:left
 in_pin:right
@@ -23,88 +22,62 @@ out_pin:right
 
 @init
 GR_METER = 4096;
-GR_PROBE = 6144;
 SVC      = 49240;
 
-rel = exp(-1 / (srate * 0.030));
-
-env   = 0;
-mkest = -144;
-tick  = 0;
-in_stamp = -1;
-in_age   = 999;
-
+gr_val   = 0;
+svc_seen = 0;
 svc_stamp = -1;
-svc_seen  = 0;
-svc_t     = -1000000;
+svc_t    = -1000000;
 
 @block
 trk = get_host_placement(hp_pos, hp_flags);
 k   = max(0, min(255, trk + 1));
-n   = max(1, min(4, slider2));
+n   = max(1, min(4, slider1));
 
 mb = GR_METER + k * 8;
-hb = GR_PROBE + k * 8 + (n - 1) * 2;
 
-tick += 1;
-tick > 10000000 ? ( tick = 1 );
+now = time_precise();
+gmem[SVC] != svc_stamp ? (
+  svc_stamp = gmem[SVC];
+  svc_seen ? ( svc_t = now ) : ( svc_seen = 1 );
+);
+svc_alive = ( now - svc_t < 1 );
 
-slider1 < 0.5 ? (
-
-  gmem[hb]     = env;
-  gmem[hb + 1] = tick;
-
+svc_alive ? (
+  gr_val = max(0, min(60, gmem[mb + 1 + n]));
 ) : (
+  gr_val = 0;
+);
 
-  gmem[hb + 1] != in_stamp ? ( in_stamp = gmem[hb + 1]; in_age = 0; )
-                           : ( in_age += 1 );
+slider3 = gr_val;
 
-  // StripTease System publishes the gain reduction of the compressors that report
-  // it themselves, into the same cells we use. It announces in gmem[mb + 1] how
-  // many compressors it feeds on this track: if ours is one of them, two writers
-  // fight over the cell and the VU alternates between the two values. We give way
-  // -- it measures, we estimate.
-  //
-  // gmem[SVC] is its clock: without this liveness test, a claim left in shared
-  // memory by a service that has since stopped would keep us silent until REAPER
-  // is restarted. The very first reading does not count: otherwise a frozen
-  // clock, seen for the first time, would pass for a change.
-  now = time_precise();
-  gmem[SVC] != svc_stamp ? (
-    svc_stamp = gmem[SVC];
-    svc_seen ? ( svc_t = now ) : ( svc_seen = 1 );
-  );
-  served = ( now - svc_t < 1 ) && ( gmem[mb + 1] & 15 ) >= n;
-
-  ( in_age < 50 && !served ) ? (
-    ein  = gmem[hb];
-    idb  = ein > 0.0000001 ? 20 * log10(ein) : -144;
-    odb  = env > 0.0000001 ? 20 * log10(env) : -144;
-    diff = odb - idb;
-
-    slider3 > 0.5 ? (
-      ( idb > -70 && odb > -70 ) ? (
-        diff > mkest ? (
-          mkest += (diff - mkest) * 0.5;
-        ) : (
-          mkest += (diff - mkest) * (1 - exp(-samplesblock / (srate * 30)));
-        );
-      );
-      mk = mkest;
-    ) : (
-      mk = slider4;
-    );
-
-    gr = max(0, min(60, mk - diff));
-
-    idb < -90 ? ( gr = 0 );
-
-    gmem[mb + 1 + n] = gr;
-    gmem[mb]         = tick;
-  );
+// Mirror to REAPER track meter (negative dB value)
+slider2 > 0.5 ? (
+  ext_gr_meter = -gr_val;
 );
 
 @sample
+// Pure transparent audio passthrough
+spl0 = spl0;
+spl1 = spl1;
 
-pk  = max(abs(spl0), abs(spl1));
-env = pk > env ? pk : env * rel;
+@gfx 200 48
+gfx_r = 0.12; gfx_g = 0.12; gfx_b = 0.14;
+gfx_rect(0, 0, gfx_w, gfx_h);
+
+gfx_setfont(1, "Arial", 14, 'b');
+svc_alive ? (
+  gfx_r = 0.40; gfx_g = 0.85; gfx_b = 0.40;
+  sprintf(#status, "SYSTEM CONNECTED");
+) : (
+  gfx_r = 0.85; gfx_g = 0.35; gfx_b = 0.35;
+  sprintf(#status, "SYSTEM OFFLINE");
+);
+gfx_x = 10; gfx_y = 6;
+gfx_drawstr(#status);
+
+gfx_setfont(2, "Arial", 16, 'b');
+gfx_r = 0.95; gfx_g = 0.95; gfx_b = 0.95;
+sprintf(#gr_str, "COMP %d : -%.1f dB", n, gr_val);
+gfx_x = 10; gfx_y = 24;
+gfx_drawstr(#gr_str);
