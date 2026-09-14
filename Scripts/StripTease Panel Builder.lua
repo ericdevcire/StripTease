@@ -1,6 +1,6 @@
 -- ============================================================================
 -- StripTease Panel Builder
--- Version: 1.2.0
+-- Version: 1.2.2
 -- Developer: Eric Avondo
 --
 -- Freeware - personal use. Resale or redistribution for profit is
@@ -66,6 +66,7 @@ M.F_INITMAX  = 4    -- knob starting at maximum / VU showing its value
 M.F_VERTICAL = 8
 M.F_POSMASK  = 112  -- radio positions, minus 2, shifted by 16
 M.F_TABSHIFT = 1024
+M.F_REVERSE  = 8192
 
 -- ---------------------------------------------------------------------------
 -- Base64
@@ -258,6 +259,15 @@ function M.decode(bin)
       s.gh, s.gw = r:f(), r:f()
     end
 
+    if s.version >= 18 then
+      s.midi_bypass = r:f()
+    end
+
+    if s.version >= 19 then
+      s.tab_bgs = {}
+      for i = 0, 3 do s.tab_bgs[i] = r:f() end
+    end
+
     s.consumed = r.p - 1
     return s
   end)
@@ -322,6 +332,14 @@ function M.encode(st)
     local gh, gw = st.gh, st.gw
     if not (gh and gw) then gh, gw = M.fit_grid(st) end
     w:f(gh); w:f(gw)
+  end
+
+  if ver >= 18 then
+    w:f(st.midi_bypass or 0)
+  end
+
+  if ver >= 19 then
+    for i = 0, 3 do w:f(st.tab_bgs and st.tab_bgs[i] or (st.bg or 1)) end
   end
 
   return w:done()

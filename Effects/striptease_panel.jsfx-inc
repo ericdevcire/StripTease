@@ -1,7 +1,7 @@
 desc:StripTease Panel engine
 // ==========================================================================
 // StripTease Panel engine
-// Version: 1.2.1
+// Version: 1.2.2
 // Developer: Eric Avondo
 //
 // Freeware - personal use. Resale or redistribution for profit is
@@ -268,6 +268,7 @@ function sb_togflag(i, bit)
 ( sb_EL[i * 8 + 7] = sb_flag(i, bit) ? sb_EL[i * 8 + 7] - bit
                                      : sb_EL[i * 8 + 7] + bit; );
 function sb_midi_byp(i) ( sb_flag(i, 4096) );
+function sb_reverse(i)  ( sb_flag(i, 8192) );
 
 function sb_val(i) ( slider(i + 1) );
 
@@ -282,7 +283,10 @@ function sb_setval(i, v)
   // so that no input escapes it -- dragging, mouse wheel, double-click and Reset
   // All Positions all go through here. The service's own return, on the other
   // hand, writes straight into the slider and already arrives on a detent.
-  sb_type(i) == 1 ? ( v = sb_det_snap(i, v) );
+  sb_type(i) == 1 ? (
+    v = sb_det_snap(i, v);
+    sb_reverse(i) ? ( v = 127 - v; );
+  );
 
   slider(i + 1) = max(0, min(127, v));
 
@@ -292,7 +296,7 @@ function sb_setval(i, v)
 // The fractional shadow no longer has a reason to exist: it was only there
 // because the committed value was an integer and a separate accumulator was
 // needed to draw and drag continuously.
-function sb_pos(i) ( sb_val(i) / 127 );
+function sb_pos(i) ( (sb_reverse(i) && sb_type(i) == 1) ? (127 - sb_val(i)) / 127 : sb_val(i) / 127 );
 
 function sb_valf(i) ( sb_pos(i) * 127 );
 
@@ -300,10 +304,24 @@ function sb_valf(i) ( sb_pos(i) * 127 );
 // one whole detent. Adding 1 over 0..127 would move nothing as soon as the grid
 // is wider than that -- a five-position parameter has detents of nearly 32.
 function sb_det_pos(i)
-local(n) ( n = sb_det(i); n >= 2 ? floor(sb_val(i) * (n - 1) / 127 + 0.5) : 0; );
+local(n, p)
+(
+  n = sb_det(i);
+  n >= 2 ? (
+    p = floor(sb_val(i) * (n - 1) / 127 + 0.5);
+    ( sb_reverse(i) && sb_type(i) == 1 ) ? (n - 1 - p) : p;
+  ) : 0;
+);
 
 function sb_det_valof(i, p)
-local(n) ( n = sb_det(i); n >= 2 ? max(0, min(n - 1, p)) * 127 / (n - 1) : 0; );
+local(n, ep)
+(
+  n = sb_det(i);
+  n >= 2 ? (
+    ep = ( sb_reverse(i) && sb_type(i) == 1 ) ? (n - 1 - p) : p;
+    max(0, min(n - 1, ep)) * 127 / (n - 1);
+  ) : 0;
+);
 
 function sb_knob_spd(fine) ( fine ? 0.06336 : 0.19008 );
 
@@ -339,9 +357,20 @@ function sb_radio_setn(i, n)
                      + (max(2, min(6, n)) - 2) * 16; );
 
 function sb_radio_pos(i)
-local(n) ( n = sb_radio_n(i); floor(sb_val(i) * (n - 1) / 127 + 0.5); );
+local(n, p)
+(
+  n = sb_radio_n(i);
+  p = floor(sb_val(i) * (n - 1) / 127 + 0.5);
+  ( sb_reverse(i) && sb_type(i) == 5 ) ? (n - 1 - p) : p;
+);
+
 function sb_radio_valof(i, p)
-local(n) ( n = sb_radio_n(i); floor(p * 127 / (n - 1) + 0.5); );
+local(n, ep)
+(
+  n = sb_radio_n(i);
+  ep = ( sb_reverse(i) && sb_type(i) == 5 ) ? (n - 1 - p) : p;
+  floor(ep * 127 / (n - 1) + 0.5);
+);
 
 // The radio driving the group, -1 if there is none. The first one found wins:
 // sb_grp_pilot_solo guarantees there are never two.
@@ -404,6 +433,8 @@ function sb_tab_label(t)
 );
 
 function sb_tab_h() ( sb_tabs_on() ? max(17, floor(34 * sb_uisc + 0.5)) : 0 );
+
+function sb_cur_bg() ( sb_tabs_on() && sb_tab >= 0 ? sb_TAB_BG[sb_tab] : sb_bg_col );
 
 // ---------------------------------------------------------------------------
 // Display surfaces
@@ -1132,6 +1163,16 @@ function sb_sel_toggle(i) ( sb_SELB[i] = sb_SELB[i] ? 0 : 1 );
 
 function sb_sel_clear() ( memset(sb_SELB, 0, sb_MAX) );
 
+function sb_sel_all()
+local(i)
+(
+  i = 0;
+  loop(sb_MAX,
+    ( sb_used(i) && sb_on_tab(i) ) ? ( sb_SELB[i] = 1; ) : ( sb_SELB[i] = 0; );
+    i += 1;
+  );
+);
+
 function sb_sel_n()
 local(i, n)
 (
@@ -1365,99 +1406,212 @@ local(c, n)
 
 function sb_ring_out() ( sb_ring_ref() * sb_uisc );
 
-function sb_ring_w()   ( max(1, ceil(8 * sb_uisc)) );
+// Thickness of the ring itself, a fifth thinner than the 8 px it used to
+// take. sb_ring_out stays where it is: it is what the layout, the halo and
+// the hit test measure from, and the knob keeps its cell.
+function sb_ring_w()   ( 6.4 * sb_uisc );
 
 function sb_ind_w()    ( 4 * sb_uisc );
 
-function sb_draw_knob(i)
-local(cx, cy, r, ang, a0, ix, iy, ci, j, ox, oy, w, n, o)
+// One band of the knob ring, from r0 out to r1: a strip of quads walked with an
+// incremental rotation -- two multiplies per segment, not a sin/cos pair -- and
+// then the outer edge traced twice with gfx_arc, at r1 and half a pixel beyond.
+// That pair is what carries the look: gfx_triangle only knows whole pixels, so
+// a polygon edge can only ever be a staircase, while gfx_arc walks the true
+// circle and weighs each pixel by how much of it the curve covers. The quads
+// fill, the arcs draw. The inner edge is left as it is: the knob face covers it.
+//
+// cx, cy come in as the pixel the circles are centred on. The half pixel added
+// here turns the truncation inside gfx_triangle and gfx_line into a rounding,
+// which puts the fill on the same grid as gfx_arc and gfx_circle.
+function sb_ring_band(cx, cy, r0, r1, a_from, a_sweep, n)
+local(px, py, st, cd, sd, vx, vy, nx, ny, pox, poy, pix, piy, cox, coy, cix, ciy)
 (
-  cx = sb_cx(i); cy = sb_cy(i); r = sb_rad(i);
+  px = cx + 0.5; py = cy + 0.5;
+  st = a_sweep / n;
+  cd = cos(st); sd = sin(st);
+
+  vx = sin(a_from); vy = -cos(a_from);
+  pox = px + vx * r1; poy = py + vy * r1;
+  pix = px + vx * r0; piy = py + vy * r0;
+  gfx_line(pix, piy, pox, poy, 1);
+
+  loop(n,
+    nx = vx * cd - vy * sd;
+    ny = vy * cd + vx * sd;
+    vx = nx; vy = ny;
+    cox = px + vx * r1; coy = py + vy * r1;
+    cix = px + vx * r0; ciy = py + vy * r0;
+    gfx_triangle(pix, piy, pox, poy, cox, coy, cix, ciy);
+    pox = cox; poy = coy;
+    pix = cix; piy = ciy;
+  );
+
+  gfx_line(pix, piy, pox, poy, 1);
+
+  // The second pass is offset by 0.6 px, and that it is not 0.5 matters: LICE
+  // clips each quarter turn of an arc to the box of its two ends, padded by a
+  // pixel on the right and at the bottom only. At r1 + 0.5 the outer
+  // antialiased pixel falls just outside that box at the top and at the left
+  // -- the two cardinal points a knob sweep runs through -- and is dropped,
+  // which flattened the ring exactly there. Past .5 the box itself rounds
+  // outwards by a pixel and the whole fringe survives, all the way round.
+  gfx_arc(cx, cy, r1,       a_from, a_from + a_sweep, 1);
+  gfx_arc(cx, cy, r1 + 0.6, a_from, a_from + a_sweep, 1);
+);
+
+function sb_draw_knob(i)
+local(cx, cy, r, ang, a0, ix, iy, ci, ox, oy, w,
+      r_rim, r_out, r_in, a_min, a_max, d_ang, step_sz,
+      th, dx, dy, bx, by, hw, p1_x, p1_y, p2_x, p2_y, p3_x, p3_y, p4_x, p4_y)
+(
+  // Two families of primitives meet here and they do not round the same way:
+  // gfx_circle and gfx_arc snap their centre to the nearest pixel, floor(c +
+  // 0.5), while gfx_triangle and gfx_line simply truncate. Given the raw
+  // centre, the ring was therefore drawn up to a pixel left of and above the
+  // face that covers its inner edge, and the face ate into it on the right --
+  // the ring read as thinner on that side, at some knob sizes only. So the
+  // centre is rounded here, once, and everything downstream works from that
+  // one pixel (sb_ring_band adds the half pixel the truncating calls need).
+  cx = floor(sb_cx(i) + 0.5); cy = floor(sb_cy(i) + 0.5);
+  r = sb_rad(i);
   ci = sb_EL[i * 8 + 6];
   ang = sb_arc0 + sb_pos(i) * sb_arcr;
 
   gfx_a = 1;
 
   sb_show_ring ? (
+    // Whole pixels, both edges, and both counted from the rim below rather
+    // than from sb_rad: LICE truncates the radius it is given, so that rim
+    // fills out to floor(r + sb_uisc) exactly. Anchoring the band to the same
+    // integer keeps the ring the same thickness from one knob size to the
+    // next -- measured from sb_rad, which lands on .5 every other size, it
+    // alternated between four and five pixels -- and a radius on a half pixel
+    // is also the one case where truncation still rounds outwards on one side
+    // and inwards on the other, which is what made the ring look thinner on
+    // the right. The inner edge sits a pixel under the rim, so no seam opens.
+    r_rim = floor(r + sb_uisc);
+    r_out = r_rim + max(2, floor(sb_ring_w() + 0.5));
+    r_in  = r_rim - 1;
 
+    // One segment per 0.3 px of sag between the chord and the true circle, so
+    // the count follows the radius instead of the flat 0.05 rad -- 94 segments
+    // for every knob, whatever its size -- that the fill used to cost. The
+    // sag no longer shows anyway: the arcs, not the quads, draw the edge.
+    step_sz = sqrt(2.4 / r_out);
+
+    // Track background
     gfx_r = 0.10; gfx_g = 0.12; gfx_b = 0.12;
-    j = 0;
-    loop(sb_ring_w(),
-      gfx_arc(cx, cy, r + sb_ring_out() - j, sb_arc0, sb_arc1, 1);
-      j += 1;
-    );
+    sb_ring_band(cx, cy, r_in, r_out, sb_arc0, sb_arcr,
+                 max(8, ceil(sb_arcr / step_sz)));
 
+    // Active value arc (only drawn if active sweep > 0.02 rad)
     a0 = sb_flag(i, 2) ? (sb_arc0 + sb_arc1) * 0.5 :
          sb_flag(i, 4) ? sb_arc1 : sb_arc0;
-    sb_setcol(sb_ring_col(ci), 1);
-    j = 0;
-    loop(sb_ring_w(),
-      gfx_arc(cx, cy, r + sb_ring_out() - j, min(a0, ang), max(a0, ang), 1);
-      j += 1;
+    a_min = min(a0, ang);
+    a_max = max(a0, ang);
+    d_ang = a_max - a_min;
+    d_ang > 0.02 ? (
+      sb_setcol(sb_ring_col(ci), 1);
+      sb_ring_band(cx, cy, r_in, r_out, a_min, d_ang,
+                   max(2, ceil(d_ang / step_sz)));
     );
   );
 
+  // Outer dark rim: filled circle + antialiased outline
   gfx_r = 0.06; gfx_g = 0.06; gfx_b = 0.06;
   gfx_circle(cx, cy, r + sb_uisc, 1, 1);
+  gfx_circle(cx, cy, r + sb_uisc, 0, 1);
+
+  // Knob face: filled circle + antialiased outline
   sb_setcol(ci, 1);
   gfx_circle(cx, cy, r, 1, 1);
+  gfx_circle(cx, cy, r, 0, 1);
 
-  ix = cx + cos(ang - 1.57) * (r - 2 * sb_uisc);
-  iy = cy + sin(ang - 1.57) * (r - 2 * sb_uisc);
-  ox = -sin(ang - 1.57);
-  oy =  cos(ang - 1.57);
+  // Subtle top highlight rim
+  sb_is_light(ci) ? ( gfx_r = 1; gfx_g = 1; gfx_b = 1; gfx_a = 0.12; )
+                  : ( gfx_r = 1; gfx_g = 1; gfx_b = 1; gfx_a = 0.20; );
+  gfx_circle(cx, cy - 0.5 * sb_uisc, r - sb_uisc, 0, 1);
+  gfx_a = 1;
+
+  // Needle pointer
+  th = ang - 1.57;
+  dx = cos(th); dy = sin(th);
+  ox = -dy;     oy = dx;
+
+  w = max(1.5, sb_ind_w());
+  hw = w * 0.5;
+
+  ix = cx + dx * (r - 2 * sb_uisc);
+  iy = cy + dy * (r - 2 * sb_uisc);
+  bx = cx + dx * (r * 0.20);
+  by = cy + dy * (r * 0.20);
+
+  // Same half pixel as the ring: the caps below are circles and round on their
+  // own, the body is a polygon and would otherwise sit half a pixel off them.
+  p1_x = bx + 0.5 - ox * hw; p1_y = by + 0.5 - oy * hw;
+  p2_x = bx + 0.5 + ox * hw; p2_y = by + 0.5 + oy * hw;
+  p3_x = ix + 0.5 + ox * hw; p3_y = iy + 0.5 + oy * hw;
+  p4_x = ix + 0.5 - ox * hw; p4_y = iy + 0.5 - oy * hw;
+
   sb_is_light(ci) ? ( gfx_r = 0.10; gfx_g = 0.10; gfx_b = 0.10; )
                   : ( gfx_r = 1;    gfx_g = 1;    gfx_b = 1;    );
-  w = sb_ind_w();
-  n = max(1, ceil(w));
-  j = 0;
-  loop(n,
 
-    o = n > 1 ? (j / (n - 1) - 0.5) * (w - 1) : 0;
-    gfx_line(cx + ox * o, cy + oy * o, ix + ox * o, iy + oy * o, 1);
-    j += 1;
-  );
+  // Solid polygon fill + smoothed borders + round caps
+  gfx_triangle(p1_x, p1_y, p2_x, p2_y, p3_x, p3_y, p4_x, p4_y);
+  gfx_line(p1_x, p1_y, p4_x, p4_y, 1);
+  gfx_line(p2_x, p2_y, p3_x, p3_y, 1);
+  gfx_circle(ix, iy, hw, 1, 1);
+  gfx_circle(bx, by, hw, 1, 1);
 );
 
 function sb_draw_toggle(i)
-local(cx, cy, r, hh, on, ci)
+local(cx, cy, r, hh, on, ci, bw, x0, y0, w, h)
 (
-  cx = sb_cx(i); cy = sb_cy(i); r = sb_rad(i); hh = max(3 * sb_uisc, r * 0.62);
+  cx = floor(sb_cx(i) + 0.5); cy = floor(sb_cy(i) + 0.5);
+  r = floor(sb_rad(i) + 0.5); hh = max(3, floor(max(3 * sb_uisc, r * 0.62) + 0.5));
   on = sb_val(i) >= 64; ci = sb_EL[i * 8 + 6];
+  bw = max(1, floor(sb_uisc + 0.5));
+
+  x0 = cx - r; y0 = cy - hh; w = 2 * r; h = 2 * hh;
 
   gfx_a = 1;
   gfx_r = 0.06; gfx_g = 0.06; gfx_b = 0.06;
-  gfx_rect(cx - r - sb_uisc, cy - hh - sb_uisc,
-           2 * r + 2 * sb_uisc, 2 * hh + 2 * sb_uisc);
+  gfx_rect(x0 - bw, y0 - bw, w + 2 * bw, h + 2 * bw);
 
   on ? sb_setcol(ci, 1) : sb_setcol(ci, 0.45);
-  gfx_rect(cx - r, cy - hh, 2 * r, 2 * hh);
+  gfx_rect(x0, y0, w, h);
 
   on ? (
     sb_is_light(ci) ? ( gfx_r = 0.15; gfx_g = 0.15; gfx_b = 0.15; )
                     : ( gfx_r = 1;    gfx_g = 1;    gfx_b = 1;    );
     gfx_a = 0.55;
-    gfx_rect(cx - r, cy - hh, 2 * r, max(1, sb_uisc));
+    gfx_rect(x0, y0, w, bw);
+    gfx_a = 1;
+  ) : (
+    gfx_r = 0; gfx_g = 0; gfx_b = 0; gfx_a = 0.30;
+    gfx_rect(x0, y0, w, bw);
     gfx_a = 1;
   );
 );
 
 function sb_draw_radio(i)
-local(cx, cy, n, k, sel, vert, w, h, x0, y0, sw, sh, sx, sy, g, ci, sp, fs)
+local(cx, cy, n, k, sel, vert, w, h, x0, y0, sw, sh, sx, sy, g, ci, sp, fs, bw)
 (
-  cx = sb_cx(i); cy = sb_cy(i);
+  cx = floor(sb_cx(i) + 0.5); cy = floor(sb_cy(i) + 0.5);
   n = sb_radio_n(i); sel = sb_radio_pos(i);
   vert = sb_radio_vert(i); ci = sb_EL[i * 8 + 6];
 
-  sw = sb_radio_cw(i); sh = sb_radio_ch(i);
+  sw = floor(sb_radio_cw(i) + 0.5); sh = floor(sb_radio_ch(i) + 0.5);
   w = vert ? sw : sw * n;
   h = vert ? sh * n : sh;
-  x0 = cx - w * 0.5; y0 = cy - h * 0.5;
-  g = max(1, sb_uisc);
+  x0 = floor(cx - w * 0.5 + 0.5); y0 = floor(cy - h * 0.5 + 0.5);
+  g = max(1, floor(sb_uisc + 0.5));
+  bw = max(1, floor(sb_uisc + 0.5));
 
   gfx_a = 1;
   gfx_r = 0.06; gfx_g = 0.06; gfx_b = 0.06;
-  gfx_rect(x0 - sb_uisc, y0 - sb_uisc, w + 2 * sb_uisc, h + 2 * sb_uisc);
+  gfx_rect(x0 - bw, y0 - bw, w + 2 * bw, h + 2 * bw);
 
   k = 0;
   loop(n,
@@ -1479,7 +1633,7 @@ local(cx, cy, n, k, sel, vert, w, h, x0, y0, sw, sh, sx, sy, g, ci, sp, fs)
   sb_is_light(ci) ? ( gfx_r = 0.15; gfx_g = 0.15; gfx_b = 0.15; )
                   : ( gfx_r = 1;    gfx_g = 1;    gfx_b = 1;    );
   gfx_a = 0.55;
-  gfx_rect(sx, sy, ( !vert && sp < n - 1 ) ? sw - g : sw, max(1, sb_uisc));
+  gfx_rect(sx, sy, ( !vert && sp < n - 1 ) ? sw - g : sw, bw);
   gfx_a = 1;
 
   // Group letters when the radio drives the scrolling (see sb_radio_grp): without
@@ -1500,8 +1654,8 @@ local(cx, cy, n, k, sel, vert, w, h, x0, y0, sw, sh, sx, sy, g, ci, sp, fs)
         sprintf(#sb_tmp2, "%c", 65 + k);
         gfx_measurestr(#sb_tmp2, sb_tw, sb_th);
         gfx_a = k == sel ? 1 : 0.55;
-        gfx_x = sx + (sw - sb_tw) * 0.5;
-        gfx_y = sy + (sh - sb_th) * 0.5;
+        gfx_x = floor(sx + (sw - sb_tw) * 0.5 + 0.5);
+        gfx_y = floor(sy + (sh - sb_th) * 0.5 + 0.5);
         gfx_drawstr(#sb_tmp2);
         k += 1;
       );
@@ -1526,7 +1680,7 @@ local(n, l, t, p)
 function sb_draw_sep(i)
 local(y, s, x0, gap)
 (
-  y = sb_sep_y(i);
+  y = floor(sb_sep_y(i) + 0.5);
   sb_setcol(sb_EL[i * 8 + 6], 1);
   gfx_a = 0.85;
   s = sb_name(i);
@@ -1535,13 +1689,13 @@ local(y, s, x0, gap)
     gfx_measurestr(s, sb_tw, sb_th);
     gap = sb_tw + 8 * sb_uisc;
     x0 = max(2 * sb_uisc, (sb_content_w() - gap) * 0.5);
-    gfx_rect(2 * sb_uisc, y, max(0, x0 - 2 * sb_uisc), max(1, 2 * sb_uisc));
-    gfx_rect(x0 + gap, y, max(0, sb_content_w() - 2 * sb_uisc - x0 - gap),
-             max(1, 2 * sb_uisc));
-    gfx_x = x0 + 4 * sb_uisc; gfx_y = y - sb_th * 0.5 + sb_uisc;
+    gfx_rect(floor(2 * sb_uisc + 0.5), y, max(0, floor(x0 - 2 * sb_uisc + 0.5)), max(1, floor(2 * sb_uisc + 0.5)));
+    gfx_rect(floor(x0 + gap + 0.5), y, max(0, floor(sb_content_w() - 2 * sb_uisc - x0 - gap + 0.5)),
+             max(1, floor(2 * sb_uisc + 0.5)));
+    gfx_x = floor(x0 + 4 * sb_uisc + 0.5); gfx_y = floor(y - sb_th * 0.5 + sb_uisc + 0.5);
     gfx_drawstr(s);
   ) : (
-    gfx_rect(2 * sb_uisc, y, max(0, sb_content_w() - 4 * sb_uisc), max(1, 2 * sb_uisc));
+    gfx_rect(floor(2 * sb_uisc + 0.5), y, max(0, floor(sb_content_w() - 4 * sb_uisc + 0.5)), max(1, floor(2 * sb_uisc + 0.5)));
   );
   gfx_a = 1;
 );
@@ -1554,8 +1708,8 @@ local(s)
     gfx_setfont(2, "Arial", max(9, floor(25 * sb_uisc + 0.5)));
     gfx_measurestr(s, sb_tw, sb_th);
     sb_setcol(sb_EL[i * 8 + 6], 0.90);
-    gfx_x = max(sb_uisc, sb_cx(i) - sb_tw * 0.5);
-    gfx_y = sb_cy(i) - sb_th * 0.5;
+    gfx_x = floor(max(sb_uisc, sb_cx(i) - sb_tw * 0.5) + 0.5);
+    gfx_y = floor(sb_cy(i) - sb_th * 0.5 + 0.5);
     gfx_drawstr(s);
   );
   gfx_a = 1;
@@ -1571,16 +1725,16 @@ local(lh, s)
     gfx_setfont(2, "Arial", sb_lab_fs());
     gfx_measurestr(s, sb_tw, sb_th);
     sb_bg_light ? ( gfx_r = 0.08; gfx_g = 0.08; gfx_b = 0.08; )
-                           : ( gfx_r = 0.95; gfx_g = 0.95; gfx_b = 0.95; );
+                : ( gfx_r = 0.95; gfx_g = 0.95; gfx_b = 0.95; );
     gfx_a = 0.90;
-    gfx_x = max(sb_uisc, sb_cx(i) - sb_tw * 0.5);
+    gfx_x = floor(max(sb_uisc, sb_cx(i) - sb_tw * 0.5) + 0.5);
 
-    gfx_y = sb_cy(i)
+    gfx_y = floor(sb_cy(i)
           + ( sb_type(i) == 7 ? sb_bar_hh(i) :
               sb_type(i) == 6 ? sb_vu_th(i) * 0.5 :
               sb_type(i) == 8 ? sb_vus_th(i) * 0.5 :
               sb_elem_h(i) * 0.5 * sb_uisc )
-          + 3.5 * sb_uisc;
+          + 3.5 * sb_uisc + 0.5);
     gfx_drawstr(s);
     gfx_a = 1;
   );
@@ -1939,14 +2093,14 @@ function sb_vu_ang(i, db)
 
 function sb_draw_vu(i)
 local(cx, cy, w, h, x0, y0, px, py, ll, a, k, n, ro, ri, live, bw, s, fs,
-      ft, sr, scy, sw, ex, ey, nx, ny, m, lv, a2, bx)
+      ft, sr, scy, sw, ex, ey, nx, ny, m, lv, cd, sd, vx, vy, bx)
 (
   live = sb_vu_tick(i);
 
-  cx = sb_cx(i);   cy = sb_cy(i);
-  w  = sb_vu_w(i); h  = sb_vu_h(i); ft = sb_vu_foot(i);
+  cx = floor(sb_cx(i) + 0.5);   cy = floor(sb_cy(i) + 0.5);
+  w  = floor(sb_vu_w(i) + 0.5); h  = floor(sb_vu_h(i) + 0.5); ft = floor(sb_vu_foot(i) + 0.5);
 
-  x0 = cx - w * 0.5; y0 = cy - (h + ft) * 0.5;
+  x0 = cx - floor(w * 0.5); y0 = cy - floor((h + ft) * 0.5);
 
   px = cx;              py = y0 + h * 1.42;
   ll = h * 1.28;
@@ -1956,26 +2110,30 @@ local(cx, cy, w, h, x0, y0, px, py, ll, a, k, n, ro, ri, live, bw, s, fs,
            w + 4 * sb_uisc, h + ft + 4 * sb_uisc);
 
   gfx_a = 1;
-  n = 0;
-  loop(8,
-    k = 0.13 - n * 0.011;
-    gfx_r = k; gfx_g = k; gfx_b = k * 1.06;
-    gfx_rect(x0, y0 + n * h * 0.125, w, ceil(h * 0.125) + 1);
-    n += 1;
-  );
+  gfx_gradrect(x0, y0, w, h, 0.13, 0.13, 0.138, 1, 0, 0, 0, 0, -0.077 / h, -0.077 / h, -0.0818 / h, 0);
 
   m = sb_vu_mode(i);
 
+  // Same idea as sb_ring_band: the 11 ticks sit on an arithmetic sequence of
+  // angles (step = sweep/5), so the direction (vx, vy) needed at tick n+1 is
+  // the one at tick n rotated by that fixed step -- two multiplies and two
+  // adds, not a sin/cos pair. 20 fewer trig calls per meter per frame; ro
+  // never varied with n either, so it comes out of the loop too.
+  a  = sb_vu_sweep() / 5;
+  cd = cos(a); sd = sin(a);
+  vx = sin(-sb_vu_sweep()); vy = -cos(-sb_vu_sweep());
+  ro = ll * 0.94;
   n = 0;
   loop(11,
 
     ( m && n >= 8 ) ? sb_setcol(3, 1.3) : sb_setcol(sb_EL[i * 8 + 6], 1);
-    a  = sb_vu_sweep() * (n / 5 - 1);
-    ro = ll * 0.94;
     ri = ll * ((n & 1) ? 0.905 : 0.860);
     gfx_a = (n & 1) ? 0.55 : 0.95;
-    gfx_line(px + ro * sin(a), py - ro * cos(a),
-             px + ri * sin(a), py - ri * cos(a), 1);
+    gfx_line(px + ro * vx, py + ro * vy,
+             px + ri * vx, py + ri * vy, 1);
+    nx = vx * cd - vy * sd;
+    ny = vy * cd + vx * sd;
+    vx = nx; vy = ny;
     n += 1;
   );
 
@@ -1984,33 +2142,33 @@ local(cx, cy, w, h, x0, y0, px, py, ll, a, k, n, ro, ri, live, bw, s, fs,
     ro = ll * 0.955;
     sb_setcol(3, 1.3);
     gfx_a = 0.9;
-    n = 0;
-    loop(16,
-      a  = sb_vu_sweep() * (0.6 + n * 0.025);
-      a2 = sb_vu_sweep() * (0.6 + (n + 1) * 0.025);
-      gfx_line(px + ro * sin(a),  py - ro * cos(a),
-               px + ro * sin(a2), py - ro * cos(a2), 1);
-      n += 1;
-    );
+    gfx_arc(px, py, ro, sb_vu_sweep() * 0.6, sb_vu_sweep() * 1.0, 1);
+    gfx_arc(px, py, ro - max(1, sb_uisc), sb_vu_sweep() * 0.6, sb_vu_sweep() * 1.0, 1);
   );
 
   h >= 30 * sb_uisc ? (
 
     fs = max(6, floor(h * 0.18 + 0.5));
     gfx_setfont(2, "Arial", fs);
+    // Same rotation-recurrence as the tick loop above (step = sweep/2.5).
+    a  = sb_vu_sweep() * 0.4;
+    cd = cos(a); sd = sin(a);
+    vx = sin(-sb_vu_sweep()); vy = -cos(-sb_vu_sweep());
+    ro = ll * 1.0;
     n = 0;
     loop(6,
 
       ( m && n >= 4 ) ? sb_setcol(3, 1.3) : sb_setcol(sb_EL[i * 8 + 6], 1);
       gfx_a = 0.85;
-      a  = sb_vu_sweep() * (n / 2.5 - 1);
       lv = floor(sb_gr_label(i, n) + 0.5);
       lv > 0 ? sprintf(#sb_tmp, "+%d", lv) : sprintf(#sb_tmp, "%d", lv);
       gfx_measurestr(#sb_tmp, sb_tw, sb_th);
-      ro = ll * 1.0;
-      gfx_x = px + ro * sin(a) - sb_tw * 0.5;
-      gfx_y = py - ro * cos(a) - sb_th * 0.5;
+      gfx_x = floor(px + ro * vx - sb_tw * 0.5 + 0.5);
+      gfx_y = floor(py + ro * vy - sb_th * 0.5 + 0.5);
       gfx_drawstr(#sb_tmp);
+      nx = vx * cd - vy * sd;
+      ny = vy * cd + vx * sd;
+      vx = nx; vy = ny;
       n += 1;
     );
   );
@@ -2030,7 +2188,7 @@ local(cx, cy, w, h, x0, y0, px, py, ll, a, k, n, ro, ri, live, bw, s, fs,
       : sprintf(#sb_tmp, "%.1f dB", sb_VUR[i])
     ) : strcpy(#sb_tmp, "dB");
     gfx_measurestr(#sb_tmp, sb_tw, sb_th);
-    gfx_x = cx - sb_tw * 0.5; gfx_y = y0 + h * 0.55;
+    gfx_x = floor(cx - sb_tw * 0.5 + 0.5); gfx_y = floor(y0 + h * 0.55 + 0.5);
     gfx_drawstr(#sb_tmp);
 
     m == 1 ? strcpy(#sb_tmp, "INPUT")  :
@@ -2039,7 +2197,7 @@ local(cx, cy, w, h, x0, y0, px, py, ll, a, k, n, ro, ri, live, bw, s, fs,
     gfx_setfont(2, "Arial", max(5, floor(h * 0.115 + 0.5)));
     gfx_measurestr(#sb_tmp, sb_tw, sb_th);
     sb_tw < w * 0.95 ? (
-      gfx_x = cx - sb_tw * 0.5; gfx_y = y0 + h * 0.74;
+      gfx_x = floor(cx - sb_tw * 0.5 + 0.5); gfx_y = floor(y0 + h * 0.74 + 0.5);
       gfx_drawstr(#sb_tmp);
     );
   );
@@ -2091,6 +2249,8 @@ local(cx, cy, w, h, x0, y0, px, py, ll, a, k, n, ro, ri, live, bw, s, fs,
                cx + ex - nx, scy + ey - ny);
   gfx_triangle(cx - ex + nx, scy - ey + ny, cx + ex - nx, scy + ey - ny,
                cx - ex - nx, scy - ey - ny);
+  gfx_line(cx - ex + nx, scy - ey + ny, cx + ex + nx, scy + ey + ny, 1);
+  gfx_line(cx - ex - nx, scy - ey - ny, cx + ex - nx, scy + ey - ny, 1);
 
   sb_vu_btn_on(i) ? (
 
@@ -2103,7 +2263,7 @@ local(cx, cy, w, h, x0, y0, px, py, ll, a, k, n, ro, ri, live, bw, s, fs,
     ( bx - sb_tw * 0.5 > cx + sr * 1.9 && bx + sb_tw * 0.5 < x0 + w ) ? (
       gfx_r = 0.92; gfx_g = 0.92; gfx_b = 0.93;
       gfx_a = 0.95;
-      gfx_x = bx - sb_tw * 0.5; gfx_y = scy - sb_th * 0.5;
+      gfx_x = floor(bx - sb_tw * 0.5 + 0.5); gfx_y = floor(scy - sb_th * 0.5 + 0.5);
       gfx_drawstr(#sb_tmp2);
     );
   );
@@ -2166,10 +2326,10 @@ local(cx, cy, w, h, x0, y0, ul, ur, upl, upr, live, ft,
 (
   live = sb_vu_tick(i);
 
-  cx = sb_cx(i);    cy = sb_cy(i);
-  w  = sb_vus_w(i); h  = sb_vus_h(i); ft = sb_vus_foot(i);
+  cx = floor(sb_cx(i) + 0.5);    cy = floor(sb_cy(i) + 0.5);
+  w  = floor(sb_vus_w(i) + 0.5); h  = floor(sb_vus_h(i) + 0.5); ft = floor(sb_vus_foot(i) + 0.5);
 
-  x0 = cx - w * 0.5; y0 = cy - (h + ft) * 0.5;
+  x0 = cx - floor(w * 0.5); y0 = cy - floor((h + ft) * 0.5);
 
   !live ? ( gfx_r = 0.55; gfx_g = 0.30; gfx_b = 0.02; )
         : ( gfx_r = 0.02; gfx_g = 0.02; gfx_b = 0.02; );
@@ -2214,8 +2374,8 @@ local(cx, cy, w, h, x0, y0, ul, ur, upl, upr, live, ft,
     sb_bg_light ? ( gfx_r = 0.08; gfx_g = 0.08; gfx_b = 0.08; )
                 : ( gfx_r = 0.95; gfx_g = 0.95; gfx_b = 0.95; );
     gfx_a = 0.90;
-    gfx_x = max(sb_uisc, cx - sb_tw * 0.5);
-    gfx_y = y0 + h + (ft - sb_th) * 0.5;
+    gfx_x = floor(max(sb_uisc, cx - sb_tw * 0.5) + 0.5);
+    gfx_y = floor(y0 + h + (ft - sb_th) * 0.5 + 0.5);
     gfx_drawstr(#sb_tmp);
   );
 
@@ -2227,12 +2387,12 @@ local(cx, cy, vert, t, dl, gp, ln, x0, y0, j, u, up, jp, f, d, live)
 (
   live = sb_vu_tick(i);
 
-  cx = sb_cx(i); cy = sb_cy(i);
+  cx = floor(sb_cx(i) + 0.5); cy = floor(sb_cy(i) + 0.5);
   vert = sb_bar_vert(i);
-  t = sb_bar_t(i); dl = sb_bar_dl(i); gp = sb_bar_gap(i); ln = sb_bar_len(i);
+  t = floor(sb_bar_t(i) + 0.5); dl = floor(sb_bar_dl(i) + 0.5); gp = max(1, floor(sb_bar_gap(i) + 0.5)); ln = floor(sb_bar_len(i) + 0.5);
 
-  x0 = vert ? cx - t * 0.5  : cx - ln * 0.5;
-  y0 = vert ? cy - ln * 0.5 : cy - t * 0.5;
+  x0 = vert ? cx - floor(t * 0.5)  : cx - floor(ln * 0.5);
+  y0 = vert ? cy - floor(ln * 0.5) : cy - floor(t * 0.5);
 
   !live ? ( gfx_r = 0.55; gfx_g = 0.30; gfx_b = 0.02; )
         : ( gfx_r = 0.02; gfx_g = 0.02; gfx_b = 0.02; );
@@ -2289,34 +2449,35 @@ function sb_draw_elem(i)
 // Stroke around an element, in the colour the caller has already set: blinking
 // yellow for hover and learn, steady blue for the selection.
 function sb_halo_shape(i)
-local(r, w, h)
+local(r, w, h, cx, cy)
 (
+  cx = floor(sb_cx(i) + 0.5); cy = floor(sb_cy(i) + 0.5);
   sb_type(i) == 4 ?
-    gfx_rect(sb_cx(i) - 60 * sb_uisc, sb_cy(i) - 20 * sb_uisc, 120 * sb_uisc, 40 * sb_uisc, 0) :
+    gfx_rect(cx - floor(60 * sb_uisc + 0.5), cy - floor(20 * sb_uisc + 0.5), floor(120 * sb_uisc + 0.5), floor(40 * sb_uisc + 0.5), 0) :
   sb_type(i) == 3 ?
-    gfx_rect(0, sb_sep_y(i) - 3 * sb_uisc, sb_content_w(), 8 * sb_uisc, 0) :
+    gfx_rect(0, floor(sb_sep_y(i) - 3 * sb_uisc + 0.5), floor(sb_content_w() + 0.5), max(1, floor(8 * sb_uisc + 0.5)), 0) :
   sb_type(i) == 5 ? (
     r = sb_radio_n(i);
-    w = sb_radio_cw(i) * (sb_radio_vert(i) ? 1 : r) + 6 * sb_uisc;
-    h = sb_radio_ch(i) * (sb_radio_vert(i) ? r : 1) + 6 * sb_uisc;
-    gfx_rect(sb_cx(i) - w * 0.5, sb_cy(i) - h * 0.5, w, h, 0);
+    w = floor(sb_radio_cw(i) * (sb_radio_vert(i) ? 1 : r) + 6 * sb_uisc + 0.5);
+    h = floor(sb_radio_ch(i) * (sb_radio_vert(i) ? r : 1) + 6 * sb_uisc + 0.5);
+    gfx_rect(cx - floor(w * 0.5), cy - floor(h * 0.5), w, h, 0);
   ) :
   sb_type(i) == 6 ? (
-    w = sb_vu_w(i) + 6 * sb_uisc;
-    h = sb_vu_th(i) + 6 * sb_uisc;
-    gfx_rect(sb_cx(i) - w * 0.5, sb_cy(i) - h * 0.5, w, h, 0);
+    w = floor(sb_vu_w(i) + 6 * sb_uisc + 0.5);
+    h = floor(sb_vu_th(i) + 6 * sb_uisc + 0.5);
+    gfx_rect(cx - floor(w * 0.5), cy - floor(h * 0.5), w, h, 0);
   ) :
   sb_type(i) == 8 ? (
-    w = sb_vus_w(i) + 6 * sb_uisc;
-    h = sb_vus_th(i) + 6 * sb_uisc;
-    gfx_rect(sb_cx(i) - w * 0.5, sb_cy(i) - h * 0.5, w, h, 0);
+    w = floor(sb_vus_w(i) + 6 * sb_uisc + 0.5);
+    h = floor(sb_vus_th(i) + 6 * sb_uisc + 0.5);
+    gfx_rect(cx - floor(w * 0.5), cy - floor(h * 0.5), w, h, 0);
   ) :
   sb_type(i) == 7 ? (
-    w = sb_bar_hw(i) * 2 + 6 * sb_uisc;
-    h = sb_bar_hh(i) * 2 + 6 * sb_uisc;
-    gfx_rect(sb_cx(i) - w * 0.5, sb_cy(i) - h * 0.5, w, h, 0);
+    w = floor(sb_bar_hw(i) * 2 + 6 * sb_uisc + 0.5);
+    h = floor(sb_bar_hh(i) * 2 + 6 * sb_uisc + 0.5);
+    gfx_rect(cx - floor(w * 0.5), cy - floor(h * 0.5), w, h, 0);
   ) :
-    gfx_circle(sb_cx(i), sb_cy(i), sb_rad(i) + sb_ring_out() + 2 * sb_uisc, 0, 1);
+    gfx_circle(cx, cy, floor(sb_rad(i) + sb_ring_out() + 2 * sb_uisc + 0.5), 0, 1);
 );
 
 function sb_draw_halo(i)
@@ -2486,7 +2647,7 @@ local(r, v, mine)
   ) :
   r == 2 ? (
     v = -1 - max(0, min(16777215, floor(gmem[sb_PAL + 1] + 0.5)));
-    sb_pal_idx == -2 ? ( sb_bg_col = v; ) :
+    sb_pal_idx == -2 ? ( sb_tabs_on() ? (sb_TAB_BG[sb_tab] = v;) : (sb_bg_col = v;); ) :
     sb_used(sb_pal_idx) ? ( sb_EL[sb_pal_idx * 8 + 6] = v; );
     sb_pal_idx = -1;
     gmem[sb_PAL] = 0;
@@ -2878,11 +3039,14 @@ local(a)
   sb_mi_add(1, #sb_tmp);
   sb_mi_add(2, strlen(sb_tab_name(t)) ? "Reset tab name" : "#Reset tab name");
   sb_mi_sep();
+  sb_build_color_menu(sb_TAB_BG[t]);
+  sb_mi_sep();
   sb_build_tab_menu();
 
   a = sb_mi_run(mx, my);
 
   a >= 9000 && a < 9100 ? sb_set_ntab(a - 9000) :
+  a >= 1000 && a < 2000 ? ( sb_TAB_BG[t] = a - 1000; ) :
   a == 1 ? ( sb_rename_idx = 2 * sb_MAX + t; sb_rename_flush = 1; ) :
   a == 2 ? ( strcpy(sb_tab_name(t), ""); sb_cfg_dirty = 1; );
 );
@@ -2920,6 +3084,7 @@ local(i, j, n, s, b)
   gmem[sb_CBCFG + 7] = sb_gh;
   gmem[sb_CBCFG + 8] = sb_gw;
   gmem[sb_CBCFG + 9] = sb_midi_bypass;
+  i = 0; loop(sb_TABMAX, gmem[sb_CBCFG + 10 + i] = sb_TAB_BG[i]; i += 1;);
 
   i = 0;
   loop(sb_TABMAX,
@@ -3002,6 +3167,7 @@ local(i, j, n, s, b, was)
     gmem[sb_CBCFG + 7] > 0 ? ( sb_gh = max(18, gmem[sb_CBCFG + 7]) );
     gmem[sb_CBCFG + 8] > 0 ? ( sb_gw = max(40, gmem[sb_CBCFG + 8]) );
     sb_midi_bypass = gmem[sb_CBCFG + 9] ? 1 : 0;
+    i = 0; loop(sb_TABMAX, sb_TAB_BG[i] = gmem[sb_CBCFG + 10 + i] != 0 ? gmem[sb_CBCFG + 10 + i] : sb_bg_col; i += 1;);
 
     n = floor(gmem[sb_CBCFG + 4] + 0.5);
     sb_ntab = n >= 2 ? min(sb_TABMAX, n) : 0;
@@ -3262,6 +3428,7 @@ local(a, c, v, j, n)
     c[0] == 5 ? (
       sb_build_pos_menu(sb_radio_n(i), sb_radio_grp(i) ? sb_NGRP : 6);
       sb_mi_add(14, sb_radio_vert(i) ? "!Vertical" : "Vertical");
+      sb_mi_add(28, sb_reverse(i)    ? "!Reverse"  : "Reverse");
 
       strcpy(#sb_tmp, sb_radio_grp(i) ? "!" : "");
       sprintf(#sb_tmp2, "Selects scroll group  (A-%c)",
@@ -3274,6 +3441,7 @@ local(a, c, v, j, n)
     ) : (
       sb_mi_add(7, sb_flag(i, 2) ? "!Bipolar" : "Bipolar");
       sb_mi_add(8, sb_flag(i, 4) ? "!Init at max" : "Init at max");
+      sb_mi_add(28, sb_reverse(i) ? "!Reverse" : "Reverse");
     );
 
     sb_mi_sep();
@@ -3305,6 +3473,7 @@ local(a, c, v, j, n)
     : sb_mi_add(0, "#Paste");
 
   sb_mi_add(42, sb_sel(i) ? "!Select  (shift-click)" : "Select  (shift-click)");
+  sb_mi_add(44, "Select all");
   sb_mi_sep();
   sb_mi_add(11, "Duplicate");
   sb_mi_add(12, "Delete");
@@ -3371,6 +3540,7 @@ local(a, c, v, j, n)
   ) :
   a ==  7 ? sb_togflag(i, 2) :
   a ==  8 ? sb_togflag(i, 4) :
+  a == 28 ? ( sb_togflag(i, 8192); sb_cfg_dirty = 1; ) :
   // 63.5 and not 64: the exact centre of the 0..127 range. The bipolar pointer is
   // drawn from the geometric centre, and now that the committed value is
   // continuous, 64 would put a linked parameter at 0.504 instead of 0.5 -- an
@@ -3381,6 +3551,7 @@ local(a, c, v, j, n)
   a == 40 ? ( sb_ecb_copy( ( sb_sel_n() >= 2 && sb_sel(i) ) ? -1 : i ) ) :
   a == 41 ? ( sb_first_free_cell(sb_cur_tab()); sb_ecb_paste(sb_fc_col, sb_fc_row); ) :
   a == 42 ? ( sb_sel_toggle(i); sb_edit = 1; ) :
+  a == 44 ? ( sb_sel_all(); sb_edit = 1; ) :
   a == 11 ? (
     j = sb_add(c[0]);
     j >= 0 ? (
@@ -3443,7 +3614,7 @@ local(a, v, i)
   sb_mi_add(26, sb_midi_bypass ? "!Global MIDI bypass (bypass all MIDI)" : "Global MIDI bypass (bypass all MIDI)");
   i = sb_grp_pilot();
   sb_build_group_menu(sb_group, i >= 0 ? sb_radio_n(i) : 0);
-  sb_build_color_menu(sb_bg_col);
+  sb_build_color_menu(sb_cur_bg());
   sb_build_count_menu(sb_cols, 4);
   sb_mi_add(43, "Fit grid to elements");
   sb_build_tab_menu();
@@ -3463,6 +3634,7 @@ local(a, v, i)
   v ? ( sprintf(#sb_tmp, "Paste elements  (%d)", v); sb_mi_add(41, #sb_tmp); )
     : sb_mi_add(0, "#Paste elements");
 
+  sb_mi_add(44, "Select all");
   sb_mi_add(42, sb_sel_n() ? "Clear selection" : "#Clear selection");
   sb_mi_sep();
 
@@ -3489,7 +3661,7 @@ local(a, v, i)
 
   a == 1999 ? sb_pal_start(-2) :
   a >= 9000 && a < 9100 ? sb_set_ntab(a - 9000) :
-  a >= 1000 && a < 2000 ? ( sb_bg_col = a - 1000; ) :
+  a >= 1000 && a < 2000 ? ( sb_tabs_on() ? (sb_TAB_BG[sb_tab] = a - 1000;) : (sb_bg_col = a - 1000;); ) :
   a >= 5000 && a < 6000 ? ( sb_cols = a - 5000; sb_reflow(); ) :
   a >= 7000 && a < 8000 ? (
 
@@ -3519,6 +3691,7 @@ local(a, v, i)
   a == 40 ? sb_ecb_copy(-1) :
   a == 41 ? sb_ecb_paste(sb_at_col, sb_at_row) :
   a == 42 ? sb_sel_clear() :
+  a == 44 ? ( sb_sel_all(); sb_edit = 1; ) :
 
   a == 22 ? sb_lfx_forget() :
   a == 23 ? sb_lfx_capture() :
@@ -3658,19 +3831,19 @@ local(j, n, w, h, tx, ty, cx, cy, r)
     cy = sb_cy(i);
     r  = sb_rad(i);
 
-    tx = cx - w * 0.5;
-    ty = cy - r - h - 4 * sb_uisc;
+    tx = floor(cx - w * 0.5 + 0.5);
+    ty = floor(cy - r - h - 4 * sb_uisc + 0.5);
 
     tx + w > gfx_w ? ( tx = gfx_w - w );
     tx < 0 ? ( tx = 0 );
-    ty < 0 ? ( ty = cy + r + 4 * sb_uisc );
+    ty < 0 ? ( ty = floor(cy + r + 4 * sb_uisc + 0.5) );
 
     gfx_r = 0.07; gfx_g = 0.07; gfx_b = 0.08; gfx_a = 0.93;
     gfx_rect(tx, ty, w, h);
     gfx_r = 0.55; gfx_g = 0.55; gfx_b = 0.58; gfx_a = 1;
     gfx_rect(tx, ty, w, h, 0);
     gfx_r = 1; gfx_g = 0.92; gfx_b = 0.55;
-    gfx_x = tx + 7 * sb_uisc; gfx_y = ty + 4 * sb_uisc;
+    gfx_x = floor(tx + 7 * sb_uisc + 0.5); gfx_y = floor(ty + 4 * sb_uisc + 0.5);
     gfx_drawstr(#sb_tip);
     gfx_a = 1;
   );
@@ -3686,7 +3859,7 @@ local(t, x, w, h, sel, u)
 
     // Repainted on every frame over the content: that is what keeps the row
     // legible while the page scrolls underneath it.
-    sb_setbg(sb_bg_col);
+    sb_setbg(sb_cur_bg());
     gfx_a = 1;
     gfx_rect(0, 0, sb_lay_w(), h);
 
@@ -3712,8 +3885,8 @@ local(t, x, w, h, sel, u)
       sb_tab_label(t);
       gfx_measurestr(#sb_tmp2, sb_tw, sb_th);
       gfx_a = sel ? 1 : 0.55;
-      gfx_x = x + (w - sb_tw) * 0.5;
-      gfx_y = (h - sb_th) * 0.5;
+      gfx_x = floor(x + (w - sb_tw) * 0.5 + 0.5);
+      gfx_y = floor((h - sb_th) * 0.5 + 0.5);
       gfx_drawstr(#sb_tmp2);
 
       t += 1;
@@ -3728,19 +3901,22 @@ local(t, x, w, h, sel, u)
 );
 
 function sb_draw_scrollbar()
-local(ms, w)
+local(ms, w, ty, th)
 (
   ms = sb_maxscroll();
   ms > 0 ? (
-    w = max(2, 4 * sb_uisc);
+    w = max(2, floor(4 * sb_uisc + 0.5));
     gfx_r = 1; gfx_g = 1; gfx_b = 1;
 
     // At the edge of the layout, not the edge of the window: the bar stays in the
     // same place as in the embedded UI.
-    gfx_a = 0.15; gfx_rect(sb_lay_w() - w, 0, w, gfx_h);
+    gfx_a = 0.15; gfx_rect(floor(sb_lay_w() - w + 0.5), 0, w, gfx_h);
 
     gfx_a = sb_drag_mode == 5 ? 0.75 : 0.50;
-    gfx_rect(sb_lay_w() - w, sb_thumb_y(), w, sb_thumb_h());
+    ty = floor(sb_thumb_y() + 0.5);
+    th = max(4, floor(sb_thumb_h() + 0.5));
+    gfx_roundrect(floor(sb_lay_w() - w + 0.5), ty, w, th, w * 0.5, 1);
+    gfx_rect(floor(sb_lay_w() - w + 0.5) + 1, ty + 1, max(1, w - 2), max(1, th - 2));
     gfx_a = 1;
   );
 );
@@ -3768,8 +3944,8 @@ local(i)
   //         1024      // sb_lpa() : parametre lie par element
   sb_LASTV = 1152;
   sb_SELB  = 1280;
-  //         1408      // free (was the last value returned through CC)
-  //         1536      // free (was the last CC published)
+  sb_REFSZ = 1408;     // 100 cases (batch resize)
+  sb_TAB_BG = 1536;    // 4 cases (tab background colors)
   sb_MI    = 1664;     // 200 cases
   sb_LOC   = 1888;     // 16 cases
 
@@ -4003,6 +4179,7 @@ local(i)
   sb_magic != 0x5B0100 ? (
     sb_magic = 0x5B0100;
     sb_bg_col = 7; sb_def_col = 7; sb_def_chan = 0;
+    i = 0; loop(sb_TABMAX, sb_TAB_BG[i] = sb_bg_col; i += 1;);
 
     sb_edit = 0; sb_show_names = 1; sb_show_ring = 1; sb_group = 1;
     sb_cols = 2;
@@ -4743,7 +4920,7 @@ local(i, v, ch, meas)
 function sb_serialize()
 local(i, n)
 (
-  sb_ser_ver = 18;
+  sb_ser_ver = 19;
   file_var(0, sb_ser_ver);
 
   // Number of elements present in the stream. Every tier is frozen on a literal:
@@ -4857,6 +5034,12 @@ local(i, n)
   );
   sb_midi_bypass = sb_midi_bypass ? 1 : 0;
 
+  sb_ser_ver >= 19 ? (
+    file_mem(0, sb_TAB_BG, 4);
+  ) : (
+    i = 0; loop(4, sb_TAB_BG[i] = sb_bg_col; i += 1;);
+  );
+
   sb_ser_ver < 4 ? ( sb_migrate_px = 1 );
 
   sb_ser_ver < 5 ? ( sb_migrate_half = 1 );
@@ -4914,7 +5097,7 @@ local(d, t, ph)
 );
 
 function sb_gfx()
-local(i, mx, my, spd, cur, t, dbl, fine, c, tc, tr, rev, d, ty, tip, tipi, vw)
+local(i, mx, my, spd, cur, t, dbl, fine, c, tc, tr, rev, d, ty, tip, tipi, vw, delta)
 (
 
   // Track and slot read here as well, and not only in sb_block: the drawing, the
@@ -5040,7 +5223,7 @@ local(i, mx, my, spd, cur, t, dbl, fine, c, tc, tr, rev, d, ty, tip, tipi, vw)
   mx = mouse_x; my = mouse_y;
 
   gfx_a = 1;
-  sb_setbg(sb_bg_col);
+  sb_setbg(sb_cur_bg());
   gfx_rect(0, 0, gfx_w, gfx_h);
 
   sb_edit ? (
@@ -5187,6 +5370,9 @@ local(i, mx, my, spd, cur, t, dbl, fine, c, tc, tr, rev, d, ty, tip, tipi, vw)
             sb_drag_mode = ( (mouse_cap & 8) && sb_type(cur) != 3 ) ? 3 : 2;
             sb_ref_y     = my;
             sb_ref_sz    = sb_EL[cur * 8 + 5];
+            ( (mouse_cap & 8) && sb_type(cur) != 3 ) ? (
+              i = 0; loop(sb_MAX, sb_REFSZ[i] = sb_EL[i * 8 + 5]; i += 1;);
+            );
 
             // Shift: the gesture is not decided yet. As long as the mouse has not
             // crossed the slack it can still become a resize; if it releases on
@@ -5286,9 +5472,18 @@ local(i, mx, my, spd, cur, t, dbl, fine, c, tc, tr, rev, d, ty, tip, tipi, vw)
         sb_drag_mode == 3 ? (
 
           sb_sel_cand < 0 ? (
-            c[5] = max(5, min(64, floor(sb_ref_sz
-                                        + (sb_ref_y - my) * 0.25 / sb_uisc
-                                        + 0.5)));
+            delta = floor((sb_ref_y - my) * 0.25 / sb_uisc + 0.5);
+            sb_SELB[sb_drag_idx] ? (
+              i = 0;
+              loop(sb_MAX,
+                ( sb_used(i) && sb_SELB[i] && sb_on_tab(i) && sb_type(i) != 3 ) ? (
+                  sb_EL[i * 8 + 5] = max(5, min(64, floor(sb_REFSZ[i] + delta + 0.5)));
+                );
+                i += 1;
+              );
+            ) : (
+              c[5] = max(5, min(64, floor(sb_ref_sz + delta + 0.5)));
+            );
           );
         ) :
         sb_drag_mode == 5 ? (
@@ -5344,7 +5539,7 @@ local(i, mx, my, spd, cur, t, dbl, fine, c, tc, tr, rev, d, ty, tip, tipi, vw)
                                  sb_det_pos(sb_hover)
                                  + sign(mouse_wheel) * ((mouse_cap & 8) ? 5 : 1)));
         ) : (
-          sb_setval(sb_hover, sb_val(sb_hover) + sign(mouse_wheel) * ((mouse_cap & 8) ? 5 : 1));
+          sb_setval(sb_hover, sb_valf(sb_hover) + sign(mouse_wheel) * ((mouse_cap & 8) ? 5 : 1));
         );
       );
     ) : (

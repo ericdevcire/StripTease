@@ -1,6 +1,6 @@
 -- ==========================================================================
 -- StripTease System
--- Version: 1.2.1
+-- Version: 1.2.2
 -- Developer: Eric Avondo
 --
 -- Freeware - personal use. Resale or redistribution for profit is
@@ -428,6 +428,8 @@ local function DB(pk)
   return pk > 0.0000001 and math.log(pk) * 8.6858896 or -144
 end
 
+local tr_vol_state = {}
+
 -- The two channels separately. The virtual channel compares channel by channel:
 -- a mono compressor on a stereo track only processes channel 1 and lets the
 -- other through untouched, so a comparison on the louder of the two would follow
@@ -435,10 +437,57 @@ end
 local function TrackLevelsDB(tr)
   local vol  = reaper.GetMediaTrackInfo_Value(tr, "D_VOL")  or 1
   local mute = reaper.GetMediaTrackInfo_Value(tr, "B_MUTE") or 0
-  if mute >= 0.5 or vol <= 0.000001 then return nil end
+  if mute >= 0.5 then return nil end
 
-  local l = (reaper.Track_GetPeakInfo(tr, 0) or 0) / vol
-  local r = (reaper.Track_GetPeakInfo(tr, 1) or 0) / vol
+  local raw_l = reaper.Track_GetPeakInfo(tr, 0) or 0
+  local raw_r = reaper.Track_GetPeakInfo(tr, 1) or 0
+
+  local vumode = reaper.GetMediaTrackInfo_Value(tr, "I_VUMODE") or 0
+  -- Bit 9 (512): Track meter is already set to pre-fader (post-FX) in REAPER.
+  -- No fader compensation needed then.
+  if (math.floor(vumode) & 512) ~= 0 then
+    if raw_l <= 0.000001 and raw_r <= 0.000001 then return -144, -144 end
+    return DB(raw_l), DB(raw_r)
+  end
+
+  if vol <= 0.000001 then return nil end
+
+  local now = reaper.time_precise()
+  local st = tr_vol_state[tr]
+  if not st then
+    st = { eff_vol = vol, last_vol = vol, last_t = now, last_l = raw_l / vol, last_r = raw_r / vol }
+    tr_vol_state[tr] = st
+  end
+
+  local dt = math.max(0.001, math.min(0.2, now - st.last_t))
+  st.last_t = now
+
+  -- Match REAPER's peak meter decay ballistics (~30 dB/sec) so moving the fader
+  -- down does not cause an explosive spike due to peak meter lag.
+  local max_decay = 10 ^ (-30 * dt / 20)
+  if vol < st.eff_vol then
+    st.eff_vol = math.max(vol, st.eff_vol * max_decay)
+  else
+    local attack_alpha = math.min(1.0, dt / 0.04)
+    st.eff_vol = st.eff_vol + (vol - st.eff_vol) * attack_alpha
+  end
+
+  local eff = math.max(0.001, st.eff_vol)
+  local l = raw_l / eff
+  local r = raw_r / eff
+
+  -- Detect active fader motion to suppress transitional meter jitter
+  local fader_moving = math.abs(vol - st.last_vol) > 0.0005
+  st.last_vol = vol
+
+  if fader_moving then
+    l = math.min(l, st.last_l * 1.05 + 0.005)
+    r = math.min(r, st.last_r * 1.05 + 0.005)
+  end
+
+  st.last_l = l
+  st.last_r = r
+
   return DB(l), DB(r)
 end
 

@@ -1,6 +1,6 @@
 -- ==========================================================================
 -- StripTease Install FX chains
--- Version: 1.2.0
+-- Version: 1.2.2
 -- Developer: Eric Avondo
 --
 -- Freeware - personal use. Resale or redistribution for profit is
