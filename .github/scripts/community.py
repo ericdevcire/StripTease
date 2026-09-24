@@ -6,7 +6,8 @@
     python3 .github/scripts/community.py catalog [--check]      # Community/README.md
     python3 .github/scripts/community.py publish                # catalog + index.xml
 
-A preset is one flat file:  Community/<Plugin> - <Author>.RfxChain
+A preset is one flat file:  Community/StripTease <Plugin> - <Author>.RfxChain
+named like the StripTease chains ("StripTease Pro-C3").
 "<Plugin>" is the plugin the panel drives, or "Panel only" for a chain holding
 no third-party plugin.
 
@@ -41,6 +42,7 @@ INSTALL_DIR = "StripTease/Community"       # under Data/, see Install FX chains.
 KEPT_VERSIONS = 10                          # older entries stay in the history file only
 
 EXT = ".RfxChain"
+PREFIX = "StripTease "
 PANEL_ONLY = "panel only"
 MAX_BYTES = 1_000_000
 MAX_NAME = 150
@@ -60,7 +62,9 @@ ABS_PATH_RE = re.compile(r'(?:\b[A-Za-z]:\\|/Users/|/home/|/Volumes/)')
 def split_name(name: str) -> tuple[str, str] | None:
     if not name.endswith(EXT):
         return None
-    parts = name[: -len(EXT)].split(" - ")
+    if not name.startswith(PREFIX) or name.startswith(PREFIX + "-"):
+        return None
+    parts = name[len(PREFIX): -len(EXT)].split(" - ")
     if len(parts) != 2 or any(not p or p != p.strip() for p in parts):
         return None
     return parts[0], parts[1]
@@ -113,7 +117,7 @@ def check_file(path: Path, siblings: list[str]) -> list[str]:
         return [f"only {EXT} files are accepted in Community/"]
     parts = split_name(name)
     if parts is None:
-        errors.append(f'name must be "<Plugin> - <Author>{EXT}" '
+        errors.append(f'name must be "{PREFIX}<Plugin> - <Author>{EXT}" '
                       '(exactly one " - " separator)')
     if len(name) > MAX_NAME:
         errors.append(f"name longer than {MAX_NAME} characters")
@@ -139,7 +143,7 @@ def check_file(path: Path, siblings: list[str]) -> list[str]:
                 errors.append('"Panel only" preset contains a plugin: '
                               + ", ".join(info["plugins"]))
         elif not info["plugins"]:
-            errors.append('no plugin in the chain: name it "Panel only - <Author>"')
+            errors.append('no plugin in the chain: name it "StripTease Panel only - <Author>"')
     return errors
 
 

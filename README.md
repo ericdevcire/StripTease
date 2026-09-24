@@ -317,7 +317,7 @@ Twelve pre-mapped FX chains are included in `FXChains/`:
 
 Presets shared by StripTease users live in [`Community/`](Community/), with a catalog of every plugin they cover.
 - **Install:** in ReaPack, install the **StripTease Community Presets** package, then run *StripTease Install FX chains*. The chains appear under *FX Chains > StripTease Community*.
-- **Share yours:** save the panel and its plugin as an FX chain, name it `<Plugin> - <Author>.RfxChain` (`Panel only - <Author>` for a panel without plugin) and upload it to `Community/` from GitHub. See [CONTRIBUTING.md](CONTRIBUTING.md).
+- **Share yours:** save the panel and its plugin as an FX chain, name it `StripTease <Plugin> - <Author>.RfxChain` (`StripTease Panel only - <Author>` for a panel without plugin) and upload it to `Community/` from GitHub. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 

@@ -19,15 +19,16 @@ A panel on its own, without any plugin, is welcome too: it is a *Panel only* pre
 ## 2. Name the file
 
 ```
-<Plugin> - <Author>.RfxChain
+StripTease <Plugin> - <Author>.RfxChain
 ```
 
 | Example | |
 | --- | --- |
-| `Pro-C 3 - Jane.RfxChain` | Jane's panel for FabFilter Pro-C 3 |
-| `UADx 1176 - JohnDoe.RfxChain` | JohnDoe's panel for the UADx 1176 |
-| `Panel only - Jane.RfxChain` | Jane's panel with no plugin |
+| `StripTease Pro-C 3 - Jane.RfxChain` | Jane's panel for FabFilter Pro-C 3 |
+| `StripTease UADx 1176 - JohnDoe.RfxChain` | JohnDoe's panel for the UADx 1176 |
+| `StripTease Panel only - Jane.RfxChain` | Jane's panel with no plugin |
 
+- Always start with `StripTease ` (no hyphen), like the chains that come with StripTease.
 - `<Plugin>` is the plugin the panel drives (`Panel only` when there is none), `<Author>` is
   your name or nickname.
 - Exactly one ` - ` separator (space, hyphen, space): no ` - ` inside the names themselves.
