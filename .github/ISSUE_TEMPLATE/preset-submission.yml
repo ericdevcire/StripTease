@@ -1,0 +1,43 @@
+name: Share a preset (without a pull request)
+description: Attach your StripTease FX chain; the maintainer adds it to Community/.
+title: "[Preset] <Plugin> - <Author>"
+labels: ["community preset"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Comfortable with GitHub? A pull request is faster: see [CONTRIBUTING.md](https://github.com/ericdevcire/StripTease/blob/main/CONTRIBUTING.md).
+        GitHub does not accept `.RfxChain` attachments: **zip the file** before dropping it below.
+  - type: input
+    id: plugin
+    attributes:
+      label: Plugin
+      description: Name, vendor and format of the plugin the panel drives. Write "Panel only" if the chain holds no plugin.
+      placeholder: "Pro-C 3 (FabFilter), VST3"
+    validations:
+      required: true
+  - type: input
+    id: author
+    attributes:
+      label: Author name to display
+      description: Your name or nickname, as it will appear in the file name and the catalog.
+    validations:
+      required: true
+  - type: textarea
+    id: file
+    attributes:
+      label: Zipped .RfxChain file
+      description: Drag and drop the .zip here.
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: What it does / what it is for
+  - type: checkboxes
+    id: rights
+    attributes:
+      label: Rights
+      options:
+        - label: I created this preset and I agree to its distribution with StripTease under the Contributions section of licence.md.
+          required: true

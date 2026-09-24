@@ -1,7 +1,7 @@
 desc:StripTease Panel engine
 // ==========================================================================
 // StripTease Panel engine
-// Version: 1.2.2
+// Version: 1.2.3
 // Developer: Eric Avondo
 //
 // Freeware - personal use. Resale or redistribution for profit is
@@ -1460,10 +1460,46 @@ local(px, py, st, cd, sd, vx, vy, nx, ny, pox, poy, pix, piy, cox, coy, cix, ciy
   gfx_arc(cx, cy, r1 + 0.6, a_from, a_from + a_sweep, 1);
 );
 
+// The knob needle: a capsule from bx, by out len along (dx, dy), rr from its
+// axis to the outer edge of the antialiased fringe, drawn in the current
+// colour. Each pixel takes the share of it the needle covers, read off its
+// distance to the axis (see sb_draw_knob). The walk follows the major axis --
+// rows when the needle stands closer to the vertical, columns otherwise -- and
+// on each only the pixels within rr / |du| + 1 of the axis are visited: every
+// pixel within rr of the segment is within rr of its line, which is what that
+// bound measures. The whole bounding box, walked before, was mostly empty on a
+// diagonal: some 1700 pixels visited for 250 drawn on a 64 px knob.
+function sb_knob_needle(bx, by, dx, dy, len, rr)
+local(vm, bu, bv, du, dv, u, u1, v, v1, vc, span, x, y, vx, vy, t, ex, ey, e2)
+(
+  vm = abs(dy) >= abs(dx);
+  vm ? ( bu = by; bv = bx; du = dy; dv = dx; )
+     : ( bu = bx; bv = by; du = dx; dv = dy; );
+  span = rr / abs(du) + 1;
+  u  = floor(min(bu, bu + du * len) - rr);
+  u1 = ceil(max(bu, bu + du * len) + rr);
+  loop(u1 - u + 1,
+    // Clamped, so that past either end the walk centres on the cap.
+    vc = bv + dv * max(0, min(len, (u - bu) / du));
+    v  = floor(vc - span); v1 = ceil(vc + span);
+    loop(v1 - v + 1,
+      vm ? ( x = v; y = u; ) : ( x = u; y = v; );
+      vx = x - bx; vy = y - by;
+      t = max(0, min(len, vx * dx + vy * dy));
+      ex = vx - dx * t; ey = vy - dy * t;
+      e2 = ex * ex + ey * ey;
+      e2 < rr * rr ? ( gfx_a = min(1, rr - sqrt(e2)); gfx_rect(x, y, 1, 1); );
+      v += 1;
+    );
+    u += 1;
+  );
+  gfx_a = 1;
+);
+
 function sb_draw_knob(i)
-local(cx, cy, r, ang, a0, ix, iy, ci, ox, oy, w,
+local(cx, cy, r, ang, a0, ci, w,
       r_rim, r_out, r_in, a_min, a_max, d_ang, step_sz,
-      th, dx, dy, bx, by, hw, p1_x, p1_y, p2_x, p2_y, p3_x, p3_y, p4_x, p4_y)
+      dx, dy, bx, by, hw, len)
 (
   // Two families of primitives meet here and they do not round the same way:
   // gfx_circle and gfx_arc snap their centre to the nearest pixel, floor(c +
@@ -1534,35 +1570,36 @@ local(cx, cy, r, ang, a0, ix, iy, ci, ox, oy, w,
   gfx_circle(cx, cy - 0.5 * sb_uisc, r - sb_uisc, 0, 1);
   gfx_a = 1;
 
-  // Needle pointer
-  th = ang - 1.57;
-  dx = cos(th); dy = sin(th);
-  ox = -dy;     oy = dx;
+  // Needle pointer. The direction is taken straight from ang, the way
+  // sb_ring_band does it, rather than through cos/sin of ang - 1.57: that
+  // constant is not pi/2, and the 0.0008 rad it misses tilted the needle off
+  // true at every position.
+  dx = sin(ang); dy = -cos(ang);
 
   w = max(1.5, sb_ind_w());
   hw = w * 0.5;
 
-  ix = cx + dx * (r - 2 * sb_uisc);
-  iy = cy + dy * (r - 2 * sb_uisc);
+  // A capsule from bx, by out along the needle, shaded pixel by pixel: each
+  // one takes the share of it the needle covers, read off its distance to the
+  // centre segment. It used to be a gfx_triangle body with gfx_line edges and
+  // gfx_circle caps, and none of the three rounds the same way: the fill has
+  // no antialiasing and took the outer pixels whole on one side, the line
+  // there fell inside it, and the caps snap their centre to a pixel the body
+  // does not end on. The edge came out smooth on one side, stepped on the
+  // other, notched at the tip. Here both edges and both round ends come from
+  // one measure, to the sub-pixel, at every angle.
+  //
+  // Coordinates are pixel indices, a pixel sitting at its own index, as the
+  // centre does for gfx_circle -- so the needle lines up with the face.
   bx = cx + dx * (r * 0.20);
   by = cy + dy * (r * 0.20);
-
-  // Same half pixel as the ring: the caps below are circles and round on their
-  // own, the body is a polygon and would otherwise sit half a pixel off them.
-  p1_x = bx + 0.5 - ox * hw; p1_y = by + 0.5 - oy * hw;
-  p2_x = bx + 0.5 + ox * hw; p2_y = by + 0.5 + oy * hw;
-  p3_x = ix + 0.5 + ox * hw; p3_y = iy + 0.5 + oy * hw;
-  p4_x = ix + 0.5 - ox * hw; p4_y = iy + 0.5 - oy * hw;
+  len = r - 2 * sb_uisc - r * 0.20;
 
   sb_is_light(ci) ? ( gfx_r = 0.10; gfx_g = 0.10; gfx_b = 0.10; )
                   : ( gfx_r = 1;    gfx_g = 1;    gfx_b = 1;    );
 
-  // Solid polygon fill + smoothed borders + round caps
-  gfx_triangle(p1_x, p1_y, p2_x, p2_y, p3_x, p3_y, p4_x, p4_y);
-  gfx_line(p1_x, p1_y, p4_x, p4_y, 1);
-  gfx_line(p2_x, p2_y, p3_x, p3_y, 1);
-  gfx_circle(ix, iy, hw, 1, 1);
-  gfx_circle(bx, by, hw, 1, 1);
+  sb_knob_needle(bx, by, dx, dy, len, hw + 0.5);
+  gfx_a = 1;
 );
 
 function sb_draw_toggle(i)
@@ -2091,6 +2128,47 @@ function sb_vu_sweep() ( 0.47 );
 function sb_vu_ang(i, db)
 ( sb_vu_sweep() * (2 * sb_vu_u(i, db) - 1) );
 
+// The VU needle, antialiased: a wedge from ri out to ll along angle a from the
+// pivot, bw either side at the foot, drawn in the current colour. gfx_triangle
+// has no antialiasing, and a needle a pixel or two wide came out as a
+// staircase. Each pixel here takes the share of it the wedge covers across its
+// width -- exact for any width, a fraction of a pixel included -- times the
+// share along it at the two ends.
+//
+// The wedge narrows to tw, 0.7 px across at scale 1, rather than to a point:
+// a width near zero shades so faintly once antialiased that the upper half of
+// a fine needle all but vanished.
+//
+// The sweep stays within half a radian of the vertical, so the needle is walked
+// a row at a time and only the few pixels around its axis on each row are
+// visited: a handful per row, not the whole box, for a meter redrawn every frame.
+// Coordinates are pixel indices, as for the knob needle.
+function sb_vu_needle(px, py, a, ri, ll, bw, alpha)
+local(sn, cs, y, y1, x, x1, xc, span, vx, vy, t, d, hw, tw, cov)
+(
+  sn = sin(a); cs = cos(a);
+  tw = min(bw, 0.35 * sb_uisc);
+  span = bw / cs + 1.5;
+  y  = floor(py - ll * cs - 1);
+  y1 = ceil(py - ri * cs + 1);
+  loop(y1 - y + 1,
+    xc = px + (py - y) * sn / cs;
+    x  = floor(xc - span); x1 = ceil(xc + span);
+    loop(x1 - x + 1,
+      vx = x - px; vy = y - py;
+      t = vx * sn - vy * cs;
+      d = abs(vx * cs + vy * sn);
+      hw = tw + (bw - tw) * max(0, min(1, (ll - t) / max(1, ll - ri)));
+      cov = max(0, min(d + hw, 0.5) - max(d - hw, -0.5))
+          * max(0, min(1, t - ri + 0.5)) * max(0, min(1, ll - t + 0.5));
+      cov > 0.004 ? ( gfx_a = alpha * cov; gfx_rect(x, y, 1, 1); );
+      x += 1;
+    );
+    y += 1;
+  );
+  gfx_a = 1;
+);
+
 function sb_draw_vu(i)
 local(cx, cy, w, h, x0, y0, px, py, ll, a, k, n, ro, ri, live, bw, s, fs,
       ft, sr, scy, sw, ex, ey, nx, ny, m, lv, cd, sd, vx, vy, bx)
@@ -2211,17 +2289,14 @@ local(cx, cy, w, h, x0, y0, px, py, ll, a, k, n, ro, ri, live, bw, s, fs,
   );
 
   a  = sb_vu_ang(i, sb_VU[i]);
-  bw = max(1, ll * 0.015);
+  // Half-width at the foot of the needle: half what it was (max(1, ll * 0.015)),
+  // which read as a wedge at the bottom of the window rather than a needle.
+  bw = max(0.6, ll * 0.0075);
   ri = (py - y0 - h) / max(0.1, cos(a));
-  gfx_r = 0; gfx_g = 0; gfx_b = 0; gfx_a = 0.45;
-  gfx_triangle(px + ri * sin(a) - bw * cos(a) + sb_uisc, py - ri * cos(a) - bw * sin(a) + sb_uisc,
-               px + ri * sin(a) + bw * cos(a) + sb_uisc, py - ri * cos(a) + bw * sin(a) + sb_uisc,
-               px + ll * sin(a) + sb_uisc,               py - ll * cos(a) + sb_uisc);
+  gfx_r = 0; gfx_g = 0; gfx_b = 0;
+  sb_vu_needle(px + sb_uisc, py + sb_uisc, a, ri, ll, bw, 0.45);
   sb_setcol(sb_EL[i * 8 + 6], 1);
-  gfx_a = 1;
-  gfx_triangle(px + ri * sin(a) - bw * cos(a), py - ri * cos(a) - bw * sin(a),
-               px + ri * sin(a) + bw * cos(a), py - ri * cos(a) + bw * sin(a),
-               px + ll * sin(a),               py - ll * cos(a));
+  sb_vu_needle(px, py, a, ri, ll, bw, 1);
 
   !live ? (
     gfx_r = 0.95; gfx_g = 0.6; gfx_b = 0.05; gfx_a = 0.85;
@@ -4140,7 +4215,10 @@ local(i)
   sb_VCH[0] = -144; sb_VCH[1] = -144; sb_VCH[2] = -144; sb_VCH[3] = 0;
   sb_VCH[4] = -144; sb_VCH[5] = -144; sb_VCH[6] = -144; sb_VCH[7] = 0;
 
-  sb_arc0 = -2.35; sb_arc1 = 2.35; sb_arcr = sb_arc1 - sb_arc0;
+  // Exactly three eighths of a turn each way, not 2.35: the needle at 0 and at
+  // 127 then lies on the true diagonal, which LICE draws as a clean staircase.
+  // A third of a degree off it, the antialiased edge broke into a visible step.
+  sb_arc0 = -0.75 * $pi; sb_arc1 = 0.75 * $pi; sb_arcr = sb_arc1 - sb_arc0;
   sb_rowh = 36;
 
   gfx_ext_retina = 1;

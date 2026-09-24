@@ -1,6 +1,6 @@
 # STRIPTEASE User Manual
 
-**Version 1.2.2** — see the [changelog](Changelog.md) for what changed.
+**Version 1.2.3** — see the [changelog](Changelog.md) for what changed.
 
 Welcome to the comprehensive guide for the StripTease system in REAPER. StripTease turns any REAPER track into a customizable console strip: knobs, switches and Gain Reduction meters that live directly in the mixer (MCP), drive your real plugins, and travel with your presets and track templates.   
 StripTease is vibe-coded.
@@ -37,7 +37,7 @@ StripTease is freeware. You may use it for your personal workflow. Selling, comm
 ## Credits
 
 **Gain-reduction estimation — StripLink inspiration (RobKor / Wormhole Labs) on earlier versions.**  
-In earlier versions of StripTease (up to v1.2.0), the concept of estimating gain reduction by comparing levels on either side of a silent plugin was borrowed from the **StripLink Aggregator** by **RobKor** (Wormhole Labs). Check out his STRIPLINK project here: https://forum.cockos.com/showthread.php?t=309941&highlight=striplink  
+In earlier versions of StripTease (up to v1.2.0), the concept of estimating gain reduction by comparing levels on either side of a silent plugin was borrowed from the **StripLink Aggregator** by **RobKor** (Wormhole Labs). Check out his STRIPLINK project here: https://forum.cockos.com/showthread.php?t=309941&highlight=striplink
 Starting with **v1.2.1**, the Gain Reduction measurement engine has been completely redesigned and rebuilt from the ground up with a custom audio-rate JSFX DSP core (sub-chunk RMS energy ratio, 2D level/gain histogram linear regression for rest gain, 700 Hz dual-band split spectral validation, PDC latency alignment, and dry/wet mix inversion), fully replacing the earlier implementation. 
   
   
@@ -51,8 +51,9 @@ Starting with **v1.2.1**, the Gain Reduction measurement engine has been complet
 | `StripTease System.lua` | Background service. Required for Gain Reduction, Direct Link, renaming, custom palettes, and preset sharing. |
 | `StripTease Check.lua` | Diagnostic tool: inspects plugin GR routing (native, parameter, measured) and manual overrides. |
 | `StripTease Panel Builder.lua` | Automatically builds a mapped panel from a plugin's parameters. Requires **ReaImGui**. |
-| `StripTease Install FX chains.lua` | Copies bundled FX chains to your REAPER `FXChains/` folder. |
+| `StripTease Install FX chains.lua` | Copies bundled FX chains to your REAPER `FXChains/` folder, and the community presets to `FXChains/StripTease Community/` when that package is installed. |
 | `FXChains/*.RfxChain` | Twelve pre-mapped chains (panel + plugin), including container-routed examples. |
+| `Community/*.RfxChain` | Presets shared by users, in the separate **StripTease Community Presets** ReaPack package. |
 
 ### Installation
 
@@ -312,6 +313,12 @@ Twelve pre-mapped FX chains are included in `FXChains/`:
 
 *Tip:* If you don't own these specific plugins, load the chain and use *Learn plugin parameter* to re-map the layout to your preferred processors.
 
+### Community Presets
+
+Presets shared by StripTease users live in [`Community/`](Community/), with a catalog of every plugin they cover.
+- **Install:** in ReaPack, install the **StripTease Community Presets** package, then run *StripTease Install FX chains*. The chains appear under *FX Chains > StripTease Community*.
+- **Share yours:** save the panel and its plugin as an FX chain, name it `<Plugin> - <Author>.RfxChain` (`Panel only - <Author>` for a panel without plugin) and upload it to `Community/` from GitHub. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ---
 
 ## 8. Cross-Size Preset Synchronization
@@ -325,7 +332,7 @@ The seven panel heights share the exact same parameter structure. `StripTease Sy
 - **MIDI CC vs. Direct Link:** MIDI CC travels downstream only; Direct Link is bidirectional, displays value pop-ups, and works anywhere in the chain.
 - **MIDI Bypass:** Use *Global MIDI bypass* or per-control bypass to prevent unwanted CC output from interfering with downstream synths or MIDI learn.
 - **Panel Capacity:** 100 elements, 1–4 grid columns, up to 4 tabbed pages with independent per-tab background colors.
-- **Antialiased Rendering Engine:** High-performance vector rendering with quad-band knob rings (`sb_ring_band`), antialiased circles, specular top highlight rims, polygonal pointer needle with circular caps, hardware-accelerated gradients (`gfx_gradrect`), recurrence matrix trigonometry, modern rounded scrollbars, and subpixel integer snapping across all controls.
+- **Antialiased Rendering Engine:** High-performance vector rendering with quad-band knob rings (`sb_ring_band`), antialiased circles, specular top highlight rims, knob pointers and VU needles antialiased per pixel from their exact coverage, hardware-accelerated gradients (`gfx_gradrect`), recurrence matrix trigonometry, modern rounded scrollbars, and subpixel integer snapping across all controls.
 - **Multiple Panels:** Multiple panels can coexist on the same track with independent links and recipes.
 - **Destructive Actions:** *Clear all* and element deletion are irreversible.
 - **HiDPI:** Panels scale automatically with REAPER's display settings.

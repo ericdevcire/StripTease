@@ -1,0 +1,42 @@
+name: Publish community presets
+
+# After a merge: regenerates Community/README.md, bumps the ReaPack package
+# "StripTease Community Presets" and writes it into index.xml.
+# Also runs when index.xml changes, because a StripTease release replaces it
+# with a copy that does not contain the community package.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Community/*.RfxChain"
+      - "index.xml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: community-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Catalog and ReaPack package
+        run: python3 .github/scripts/community.py publish
+
+      - name: Commit
+        run: |
+          git add Community/README.md .github/community-versions.json index.xml
+          if git diff --cached --quiet; then
+            echo "Nothing to publish"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Community presets: update catalog and ReaPack package"
+          git push

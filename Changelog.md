@@ -2,6 +2,25 @@
 
 All notable changes to StripTease, newest version first. Version numbers match the entries ReaPack shows.
 
+## 1.2.3 — 2026-09-24
+
+**Community presets:**
+- New `Community/` folder for presets shared by users, distributed as a separate ReaPack package: **StripTease Community Presets**.
+- `StripTease Install FX chains` also copies the community chains, into `FXChains/StripTease Community/`.
+- Presets are submitted by pull request (or by issue, for those without GitHub experience): see `CONTRIBUTING.md`. Each submission is checked automatically, and the catalog and the ReaPack package update themselves after the merge.
+- Licence: new *Contributions* section.
+
+**Antialiased knob pointer:**
+- The white pointer line on knobs is now drawn with true antialiasing: straight and even on both edges, at every angle, with clean round ends.
+- Fixed a pointer that was slightly off true: it now stands exactly vertical at the centre of a bipolar knob, and exactly on the diagonal at 0 and 127.
+- The pointer moves smoothly, with no one-pixel jumps as the knob turns.
+
+**Antialiased VU meter needle:**
+- The VU needle is now antialiased (the stepped edges are gone), with its drop shadow drawn the same way.
+- Slimmer needle: half as wide at its base, tapering to a fine tip.
+
+**Performance:** measured at about 20 µs per frame per panel (3 knobs and 1 VU), under 0.1% of a CPU core. Drawing only, with no effect on audio processing.
+
 ## 1.2.2 — 2026-09-13
 
 **Batch resize on multi-selection:**

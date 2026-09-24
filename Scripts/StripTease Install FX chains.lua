@@ -1,17 +1,20 @@
 -- ==========================================================================
 -- StripTease Install FX chains
--- Version: 1.2.2
+-- Version: 1.2.3
 -- Developer: Eric Avondo
 --
 -- Freeware - personal use. Resale or redistribution for profit is
 -- prohibited. See LICENSE.txt.
 -- ==========================================================================
-local SRC_REL = "/Data/StripTease"
-local DST_REL = "/FXChains"
+-- Each ReaPack data folder and the FXChains/ folder it is copied to. The
+-- community folder is only present when the "StripTease Community Presets"
+-- package is installed; its chains get their own sub-folder in the FX browser.
+local SETS = {
+  { label = "StripTease",           src = "/Data/StripTease",           dst = "/FXChains" },
+  { label = "StripTease Community", src = "/Data/StripTease/Community", dst = "/FXChains/StripTease Community" },
+}
 
 local res = reaper.GetResourcePath()
-local src = res .. SRC_REL
-local dst = res .. DST_REL
 
 local function list_chains(dir)
   local out, i = {}, 0
@@ -46,57 +49,66 @@ local function write_all(path, data)
   return true
 end
 
-local chains = list_chains(src)
+local function install(set, chains)
+  local src, dst = res .. set.src, res .. set.dst
+  local r = { copied = {}, skipped = {}, failed = {}, dst = dst, label = set.label }
+  reaper.RecursiveCreateDirectory(dst, 0)
 
-if #chains == 0 then
+  for _, name in ipairs(chains) do
+    local target = dst .. "/" .. name
+    local existing = read_all(target)
+    local data = read_all(src .. "/" .. name)
+
+    if not data then
+      r.failed[#r.failed + 1] = name
+    elseif existing == data then
+      r.skipped[#r.skipped + 1] = name
+    else
+      local overwrite = true
+      if existing then
+        overwrite = reaper.ShowMessageBox(
+          name .. "\n\nalready exists in " .. set.dst:sub(2) .. "/ with different content.\n" ..
+          "Overwrite it with the " .. set.label .. " version?", "StripTease", 4) == 6
+      end
+      if overwrite then
+        if write_all(target, data) then
+          r.copied[#r.copied + 1] = name
+        else
+          r.failed[#r.failed + 1] = name
+        end
+      else
+        r.skipped[#r.skipped + 1] = name
+      end
+    end
+  end
+  return r
+end
+
+local results = {}
+for _, set in ipairs(SETS) do
+  local chains = list_chains(res .. set.src)
+  if #chains > 0 then results[#results + 1] = install(set, chains) end
+end
+
+if #results == 0 then
   reaper.ShowMessageBox(
-    "No FX chain found in:\n" .. src ..
+    "No FX chain found in:\n" .. res .. SETS[1].src ..
     "\n\nInstall or reinstall StripTease, then run this script again.",
     "StripTease", 0)
   return
 end
 
-reaper.RecursiveCreateDirectory(dst, 0)
-
-local copied, skipped, failed = {}, {}, {}
-
-for _, name in ipairs(chains) do
-  local target = dst .. "/" .. name
-  local existing = read_all(target)
-  local data = read_all(src .. "/" .. name)
-
-  if not data then
-    failed[#failed + 1] = name
-  elseif existing == data then
-    skipped[#skipped + 1] = name
-  else
-    local overwrite = true
-    if existing then
-      overwrite = reaper.ShowMessageBox(
-        name .. "\n\nalready exists in FXChains/ with different content.\n" ..
-        "Overwrite it with the StripTease version?", "StripTease", 4) == 6
-    end
-    if overwrite then
-      if write_all(target, data) then
-        copied[#copied + 1] = name
-      else
-        failed[#failed + 1] = name
-      end
-    else
-      skipped[#skipped + 1] = name
-    end
+local msg = "StripTease FX chains"
+for _, r in ipairs(results) do
+  msg = msg .. string.format(
+    "\n\n%s\nInstalled / updated: %d\nAlready up to date or skipped: %d",
+    r.label, #r.copied, #r.skipped)
+  if #r.failed > 0 then
+    msg = msg .. "\nFailed: " .. #r.failed .. "\n  " .. table.concat(r.failed, "\n  ")
   end
+  msg = msg .. "\nDestination: " .. r.dst
 end
 
-local msg = string.format(
-  "StripTease FX chains\n\nInstalled / updated: %d\nAlready up to date or skipped: %d",
-  #copied, #skipped)
-
-if #failed > 0 then
-  msg = msg .. "\nFailed: " .. #failed .. "\n  " .. table.concat(failed, "\n  ")
-end
-
-msg = msg .. "\n\nDestination:\n" .. dst ..
-      "\n\nThe chains show up in the FX browser, under the 'FX Chains' tab."
+msg = msg .. "\n\nThe chains show up in the FX browser, under the 'FX Chains' tab."
 
 reaper.ShowMessageBox(msg, "StripTease", 0)

@@ -1,0 +1,27 @@
+name: Validate community presets
+
+on:
+  pull_request:
+    paths:
+      - "Community/**"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      # The validator is taken from the base branch, never from the pull request:
+      # a submission cannot relax the rules it is checked against.
+      - name: Fetch the validator from the base branch
+        run: git show HEAD^1:.github/scripts/community.py > "$RUNNER_TEMP/community.py"
+
+      - name: Validate
+        run: |
+          cp "$RUNNER_TEMP/community.py" .github/scripts/community.py
+          python3 .github/scripts/community.py validate --diff HEAD^1
