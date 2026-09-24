@@ -38,12 +38,17 @@ StripTease <Plugin> - <Author>.RfxChain
 
 ## 3. Send it
 
-**On GitHub, no git knowledge needed**
+**On GitHub, no git knowledge needed** (a free GitHub account is enough)
 
-1. Open the [Community/](Community/) folder and click **Add file > Upload files**.
-2. Drop your `.RfxChain` file(s), then **Propose changes**. GitHub copies the project to
-   your account and prepares the pull request.
-3. Fill in the form and click **Create pull request**.
+You cannot upload straight into this repository: you upload into your own copy of it (a
+*fork*), then ask for your file to be brought over (a *pull request*).
+
+1. At the top of the [StripTease page](https://github.com/ericdevcire/StripTease), click
+   **Fork**, then **Create fork**. Your copy opens, at `github.com/<you>/StripTease`.
+2. In your copy, open the `Community` folder and click **Add file > Upload files**.
+3. Drop your `.RfxChain` file(s), then click **Commit changes**.
+4. Back at the top of your copy, click **Contribute > Open pull request**, fill in the form
+   and click **Create pull request**.
 
 **Without a GitHub pull request:** open an issue with the
 [Share a preset](https://github.com/ericdevcire/StripTease/issues/new?template=preset-submission.yml) form and attach your chain,
@@ -61,7 +66,8 @@ Each pull request is checked automatically. The check fails, with an explanation
 - the chain is larger than 1 MB, is truncated, or refers to a file on your disk
   (sample, impulse response...).
 
-Fix the file, upload it again to the same pull request, and the check runs again.
+Fix the file, upload it again into the `Community` folder of your copy, and the pull
+request and its check update by themselves.
 
 Want to check before sending? From a copy of the repository:
 
